@@ -1,0 +1,170 @@
+/*
+ *  Copyright (C) 2002 RealVNC Ltd.
+ *  Copyright (C) 1999 AT&T Laboratories Cambridge.  All Rights Reserved.
+ *
+ *  This is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This software is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this software; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
+ *  USA.
+ */
+
+/*
+ * hextile.cppinc - handle hextile encoding.
+ *
+ * This file shouldn't be compiled directly.  It is included multiple times by
+ * rfbproto.c, each time with a different definition of the macro BPP.  For
+ * each value of BPP, this file defines a function which handles a hextile
+ * encoded rectangle with BPP bits per pixel.
+ */
+
+#define handleHextileBPP CONCAT2E(handleHextile,BPP)
+#define rfbCARDBPP       CONCAT2E(rfbCARD,BPP)
+#define GET_PIXEL        CONCAT2E(GET_PIXEL,BPP)
+
+
+
+bool RFBProtocol::handleHextileBPP(int rx, int ry, size_t rw, size_t rh)
+{
+    for (int y = ry; y < ry+(int)rh; y += 16)
+    {
+        for (int x = rx; x < rx+(int)rw; x += 16)
+        {
+            int w = 16;
+            int h = 16;
+
+            if (rx+rw - x < 16)
+                w = rx+rw - x;
+
+            if (ry+rh - y < 16)
+                h = ry+rh - y;
+
+            rfbCARD8 subencoding;
+            if (!this->readFromRFBServer(&subencoding, 1))
+            {
+                if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                return false;
+            }
+            else
+            {
+                if (subencoding & rfbHextileRaw)
+                {
+                    if (!this->readFromRFBServer(decodeBuffer, w * h * (BPP / 8)))
+                    {
+                        if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                        return false;
+                    }
+                    else
+                    {
+                        this->copyRectData(decodeBuffer, x, y, w, h);
+                        continue;
+                    }
+                }
+
+                rfbCARDBPP bg = 0;
+                if (subencoding & rfbHextileBackgroundSpecified)
+                {
+                    if (!this->readFromRFBServer(&bg, sizeof(bg)))
+                    {
+                        if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                        return false;
+                    }
+                }
+
+                this->fillRect(mapColor(bg), x, y, w, h);
+
+                rfbCARDBPP fg = 0;
+                if (subencoding & rfbHextileForegroundSpecified)
+                {
+                    if (!this->readFromRFBServer(&fg, sizeof(fg)))
+                    {
+                        if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                        return false;
+                    }
+                }
+
+                if (!(subencoding & rfbHextileAnySubrects))
+                    continue;
+
+                rfbCARD8 nSubrects;
+                if (!this->readFromRFBServer(&nSubrects, 1))
+                {
+                    if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                    return false;
+                }
+                else
+                {
+                    rfbCARD8* ptr = (rfbCARD8*)decodeBuffer;
+
+                    if (subencoding & rfbHextileSubrectsColoured)
+                    {
+                        if (!this->readFromRFBServer(decodeBuffer, nSubrects * (2 + (BPP / 8))))
+                        {
+                            if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                            return false;
+                        }
+                        else
+                        {
+                            for (rfbCARD8 i = 0; i < nSubrects; i++)
+                            {
+                                GET_PIXEL(fg, ptr);
+
+                                const int sx = rfbHextileExtractX(*ptr);
+                                const int sy = rfbHextileExtractY(*ptr);
+                                ptr++;
+
+                                const int sw = rfbHextileExtractW(*ptr);
+                                const int sh = rfbHextileExtractH(*ptr);
+                                ptr++;
+
+                                this->fillRect(mapColor(fg), x+sx, y+sy, sw, sh);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (!this->readFromRFBServer(decodeBuffer, nSubrects * 2))
+                        {
+                            if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                            return false;
+                        }
+                        else
+                        {
+                            const rfbCARD32 color = mapColor(fg);
+
+                            for (rfbCARD8 i = 0; i < nSubrects; i++)
+                            {
+                                const int sx = rfbHextileExtractX(*ptr);
+                                const int sy = rfbHextileExtractY(*ptr);
+                                ptr++;
+                                
+                                const int sw = rfbHextileExtractW(*ptr);
+                                const int sh = rfbHextileExtractH(*ptr);
+                                ptr++;
+                                
+                                this->fillRect(color, x+sx, y+sy, sw, sh);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+#undef GET_PIXEL
+#undef rfbCARDBPP
+#undef handleRREBPP

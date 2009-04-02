@@ -1,0 +1,89 @@
+/*
+ *  Copyright (C) 2002 RealVNC Ltd.
+ *  Copyright (C) 1999 AT&T Laboratories Cambridge.  All Rights Reserved.
+ *
+ *  This is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This software is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this software; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
+ *  USA.
+ */
+
+/*
+ * corre.cppinc - handle CoRRE encoding.
+ *
+ * This file shouldn't be compiled directly.  It is included multiple times by
+ * rfbproto.c, each time with a different definition of the macro BPP.  For
+ * each value of BPP, this file defines a function which handles a CoRRE
+ * encoded rectangle with BPP bits per pixel.
+ */
+
+#define handleCoRREBPP CONCAT2E(handleCoRRE,BPP)
+#define rfbCARDBPP     CONCAT2E(rfbCARD,BPP)
+
+
+
+bool RFBProtocol::handleCoRREBPP(int rx, int ry, size_t rw, size_t rh)
+{
+    rfbRREHeader hdr;
+    memset(&hdr, 0, sizeof(hdr));
+
+    if (!this->readFromRFBServer(&hdr, sz_rfbRREHeader))
+    {
+        if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+        return false;
+    }
+    else
+    {
+        hdr.nSubrects = Swap32IfLE(hdr.nSubrects);
+
+        rfbCARDBPP pix;
+        if (!this->readFromRFBServer(&pix, sizeof(pix)))
+        {
+            if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+            return false;
+        }
+        else
+        {
+            this->fillRect(mapColor(pix), rx, ry, rw, rh);
+
+            if (!this->readFromRFBServer(decodeBuffer, hdr.nSubrects * (sizeof(rfbCARD32) + (BPP / 8))))
+            {
+                if (isOpen) this->errorMessage("RFBProtocol::handleCoRREBPP", "socket read error");
+                return false;
+            }
+            else
+            {
+                rfbCARD8* ptr = (rfbCARD8*)decodeBuffer;
+                for (rfbCARD32 i = 0; i < hdr.nSubrects; i++)
+                {
+                    pix = *(rfbCARDBPP*)ptr;
+                    ptr += BPP/8;
+
+                    const int x = *ptr++;
+                    const int y = *ptr++;
+                    const int w = *ptr++;
+                    const int h = *ptr++;
+
+                    this->fillRect(mapColor(pix), rx+x, ry+y, w, h);
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+#undef rfbCARDBPP
+#undef handleRREBPP

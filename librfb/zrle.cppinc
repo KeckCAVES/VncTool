@@ -1,0 +1,312 @@
+//
+// Copyright (C) 2002 RealVNC Ltd.  All Rights Reserved.
+//
+// This is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This software is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this software; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
+// USA.
+
+//
+// zrle.cppinc - zrle decoding function.
+//
+// Before including this file, you must define a number of CPP macros.
+//
+// BPP should be 8, 16 or 32 depending on the bits per pixel.
+// CPIXEL (optional)
+
+#ifdef CPIXEL
+#define PIXEL_T       CONCAT2E(rfbCARD,BPP)
+#define READ_PIXEL    CONCAT2E(readOpaque,CPIXEL)
+#define handleZRLEBPP CONCAT2E(handleZRLE,CPIXEL)
+#else
+#define PIXEL_T       CONCAT2E(rfbCARD,BPP)
+#define READ_PIXEL    CONCAT2E(readOpaque,BPP)
+#define handleZRLEBPP CONCAT2E(handleZRLE,BPP)
+#endif
+
+
+
+bool RFBProtocol::handleZRLEBPP(int x, int y, size_t w, size_t h)
+{
+    rfbCARD32 length;
+    if (!this->readFromRFBServer(&length, sizeof(length)))
+    {
+        if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+        return false;
+    }
+
+    length = Swap32IfLE(length);
+
+    for (int ty = y; ty < y+(int)h; ty += rfbZRLETileHeight)
+    {
+        int th = rfbZRLETileHeight;
+        if ((int)th > y+(int)h-ty)
+            th = (size_t)(y+(int)h-ty);
+
+        for (int tx = x; tx < x+(int)w; tx += rfbZRLETileWidth)
+        {
+            int tw = rfbZRLETileWidth;
+            if ((int)tw > x+(int)w-tx)
+                tw = (size_t)(x+(int)w-tx);
+
+            rfbCARD8 mode;
+            if (!zlibDecompressor.readrfbCARD8(&mode))
+            {
+                if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                return false;
+            }
+
+            const bool  rle     = (mode & 0x80) ? true : false;
+            const rfbCARD8 palSize = (mode & 0x7f);
+
+            PIXEL_T palette[128];
+
+            // fprintf(stderr, "rle %d palSize %d\n", rle, palSize);
+
+            for (rfbCARD8 i = 0; i < palSize; i++)
+                if (!zlibDecompressor.READ_PIXEL(&palette[i]))
+                {
+                    if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                    return false;
+                }
+
+            if (palSize == 1)
+            {
+                const PIXEL_T pix = palette[0];
+                this->fillRect(mapColor(pix), tx, ty, tw, th);
+                continue;
+            }
+
+            if (!rle)
+            {
+                if (palSize == 0)
+                {
+                    // raw
+#ifdef CPIXEL
+                    for (PIXEL_T* ptr = (PIXEL_T*)decodeBuffer; (void*)ptr < (void*)(decodeBuffer+(tw*th)); ptr++)
+                        if (!zlibDecompressor.READ_PIXEL(ptr))
+                        {
+                            if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                            return false;
+                        }
+#else
+                    if (!zlibDecompressor.readBytes(decodeBuffer, tw*th*(BPP/8)))
+                    {
+                        if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                        return false;
+                    }
+#endif
+                }
+                else
+                {
+                    // packed pixels
+                    const rfbCARD8 bppp = (palSize > 16)
+                                           ? 8
+                                           : (palSize > 4)
+                                                 ? 4
+                                                 : (palSize > 2)
+                                                       ? 2
+                                                       : 1;
+                    PIXEL_T* ptr = (PIXEL_T*)decodeBuffer;
+
+                    for (int i = 0; i < th; i++)
+                    {
+                        const PIXEL_T* const eol = ptr + tw;
+
+                        rfbCARD8 byte  = 0;
+                        rfbCARD8 nbits = 0;
+
+                        while (ptr < eol)
+                        {
+                            if (nbits == 0)
+                            {
+                                if (!zlibDecompressor.readrfbCARD8(&byte))
+                                {
+                                    if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                                    return false;
+                                }
+
+                                nbits = 8;
+                            }
+
+                            nbits -= bppp;
+
+                            const rfbCARD8 index = (byte >> nbits) & ((1 << bppp) - 1) & 127;
+                            *ptr++ = palette[index];
+                        }
+                    }
+                }
+#ifdef FAVOUR_FILL_RECT
+   // fprintf(stderr, "copying data to screen %dx%d at %d,%d\n", tw, th, tx, ty);
+    this->CopyRectData(decodeBuffer, tx, ty, tw, th);
+#endif
+            }
+            else
+            {
+                if (palSize == 0)
+                {
+                    // plain RLE
+
+                    PIXEL_T*       ptr = (PIXEL_T*)decodeBuffer;
+                    PIXEL_T* const end = ptr + (th * tw);
+                    while (ptr < end)
+                    {
+                        PIXEL_T pix;
+                        if (!zlibDecompressor.READ_PIXEL(&pix))
+                        {
+                            if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                            return false;
+                        }
+
+                        int len = 1;
+                        rfbCARD8 b;
+                        do
+                        {
+                            if (!zlibDecompressor.readrfbCARD8(&b))
+                            {
+                                if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                                return false;
+                            }
+
+                            len += b;
+                        }
+                        while (b == 255);  // end of do-while
+
+                        // assert(len <= end - ptr);
+
+#ifdef FAVOUR_FILL_RECT
+                        int i = ptr - decodeBuffer;
+                        ptr += len;
+
+                        int runX = i % tw;
+                        int runY = i / tw;
+
+                        if (runX + len > tw)
+                        {
+                            if (runX != 0)
+                            {
+                                this->fillRect(mapColor(pix), tx+runX, ty+runY, tw-runX, 1);
+                                len -= tw-runX;
+                                runX = 0;
+                                runY++;
+                            }
+
+                            if (len > tw)
+                            {
+                                this->fillRect(mapColor(pix), tx, ty+runY, tw, len/tw);
+                                runY += len / tw;
+                                len = len % tw;
+                            }
+                        }
+
+                        if (len != 0)
+                            this->fillRect(mapColor(pix), tx+runX, ty+runY, len, 1);
+#else
+                        while (len-- > 0)
+                            *ptr++ = pix;
+#endif
+                    }
+                }
+                else
+                {
+                    // palette RLE
+
+                    PIXEL_T* ptr = (PIXEL_T*)decodeBuffer;
+                    PIXEL_T* end = ptr + th * tw;
+
+                    while (ptr < end)
+                    {
+                        rfbCARD8 index;
+                        if (!zlibDecompressor.readrfbCARD8(&index))
+                        {
+                            if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                            return false;
+                        }
+
+                        int len = 1;
+
+                        if (index & 128)
+                        {
+                            rfbCARD8 b;
+
+                            do
+                            {
+                                if (!zlibDecompressor.readrfbCARD8(&b))
+                                {
+                                    if (isOpen) this->errorMessage("RFBProtocol::handleZRLEBPP", "socket read error");
+                                    return false;
+                                }
+
+                                len += b;
+                            }
+                            while (b == 255);  // end of do-while
+
+                            // assert(len <= end - ptr);
+                        }
+
+                        index &= 127;
+
+                        PIXEL_T pix = palette[index];
+
+#ifdef FAVOUR_FILL_RECT
+                        int i = ptr - decodeBuffer;
+                        ptr += len;
+
+                        int runX = i % tw;
+                        int runY = i / tw;
+
+                        if (runX + len > tw)
+                        {
+                            if (runX != 0)
+                            {
+                                this->fillRect(mapColor(pix), tx+runX, ty+runY, tw-runX, 1);
+                                len -= tw-runX;
+                                runX = 0;
+                                runY++;
+                            }
+
+                            if (len > tw)
+                            {
+                                this->fillRect(mapColor(pix), tx, ty+runY, tw, len/tw);
+                                runY += len / tw;
+                                len = len % tw;
+                            }
+                        }
+
+                        if (len != 0)
+                            this->fillRect(mapColor(pix), tx+runX, ty+runY, len, 1);
+#else
+                        while (len-- > 0)
+                            *ptr++ = pix;
+#endif
+                    }
+                }
+            }
+
+#ifndef FAVOUR_FILL_RECT
+            // fprintf(stderr, "copying data to screen %dx%d at %d,%d\n", tw, th, tx, ty);
+            this->copyRectData(decodeBuffer, tx, ty, tw, th);
+#endif
+        }
+    }
+
+    zlibDecompressor.reset();
+
+    return true;
+}
+
+
+
+#undef handleZRLEBPP
+#undef READ_PIXEL
+#undef PIXEL_T
