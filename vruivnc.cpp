@@ -25,6 +25,7 @@
 #include <Images/RGBImage.h>
 #include <Vrui/Vrui.h>
 #include <Vrui/Application.h>
+#include <Vrui/Geometry.h>
 #include <Geometry/OrthogonalTransformation.h>
 
 #include "vruivnc.h"

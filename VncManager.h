@@ -729,8 +729,8 @@ namespace Voltaic {
     public:
         VncManager( MessageManager&         messageManager,
                     PasswordRetrievalThunk& passwordRetrievalThunk,
-                    bool                    isSlave                         = false,
-                    Comm::MulticastPipe*    clusterMulticastPipe = 0 ) :
+                    bool                    isSlave                = false,
+                    Comm::MulticastPipe*    clusterMulticastPipe   = 0 ) :
             messageManager(messageManager),
             passwordRetrievalThunk(passwordRetrievalThunk),
             passwordRetrievalCompletionThunk(*this),

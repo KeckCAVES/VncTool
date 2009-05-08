@@ -868,7 +868,7 @@ size_t RFBProtocol::scanEncodingsString(rfbCARD32* pDest = 0) const
                     n++;
                 else if (!pDest)  // only emit error messages on first call to this method (the counting pass with pDest == 0)
                 {
-                    if (isOpen) this->errorMessageForSend("RFBProtocol::sendSetEncodings", "unknown encoding type encountered");
+                    if (isOpen) this->errorMessageForSend("RFBProtocol::scanEncodingsString", "unknown encoding type encountered");
                 }
             }
 
@@ -923,9 +923,10 @@ bool RFBProtocol::sendSetEncodings()
                     encs[se->nEncodings++] = Swap32IfLE(encoding);
 
                 if (i == 0)
-                    encs[se->nEncodings++] = Swap32IfLE(currentEncoding);  // insert currentEncoding as second entry, after rfbEncodingCopyRect
+                    encs[se->nEncodings++] = Swap32IfLE(currentEncoding);  // insert currentEncoding as second entry, after rfbEncodingCopyRect (which is always SupportedEncodings[0])
             }
         }
+//{ fprintf(stderr, "%ld encodings:\n", (long)se->nEncodings); for (int i = 0; i < se->nEncodings; i++) fprintf(stderr, "    - 0x%08lx\n", (long)Swap32IfLE(encs[i])); }//!!!
 
         const size_t len = sz_rfbSetEncodingsMsg + se->nEncodings*sizeof(rfbCARD32);
 
@@ -1255,6 +1256,7 @@ bool RFBProtocol::receivedFramebufferUpdate(const rfbFramebufferUpdateMsg& msg)
                 }
                 else
                 {
+//fprintf(stderr, "rect.encoding = %ld\n", (long)rect.encoding);//!!!
                     switch (rect.encoding)
                     {
                         case rfbEncodingRaw:

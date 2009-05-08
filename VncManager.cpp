@@ -26,7 +26,7 @@ namespace Voltaic {
 
 //----------------------------------------------------------------------
 
-inline Images::RGBImage::Color convertPixelToRGB( const rfbPixelFormat& format, rfbCARD32 pixel)
+inline Images::RGBImage::Color convertPixelToRGB(const rfbPixelFormat& format, rfbCARD32 pixel)
 {
     return Images::RGBImage::Color( ((pixel >> format.redShift)   & format.redMax),
                                     ((pixel >> format.greenShift) & format.greenMax),
@@ -548,7 +548,10 @@ bool VncManager::TextureManager::write( GLint                          destX,
                         return false;
 
                     if (!setTexParameters())
+                    {
+                        glBindTexture(GL_TEXTURE_2D, 0);  // protect texture
                         return false;
+                    }
 
                     bool xfError = false;
                     glTexSubImage2D(GL_TEXTURE_2D, texLevel, xOffset, yOffset, w, h, texFormat, texType, buf);
