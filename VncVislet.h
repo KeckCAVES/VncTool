@@ -157,7 +157,7 @@ namespace Voltaic {
         static VncVisletFactory* factory;  // pointer to the factory object for this class
 
     protected:
-        virtual void disconnectButtonCallback(GLMotif::Button::CallbackData* cbData);
+        virtual void closeButtonCallback(GLMotif::Button::CallbackData* cbData);
         void parseArguments(int numArguments, const char* const arguments[]);
         template<class PopupWindowClass>
             void closePopupWindow(PopupWindowClass*& var);
@@ -176,7 +176,7 @@ namespace Voltaic {
         bool                  enableClickThrough;
         GLMotif::PopupWindow* popupWindow;
         VncWidget*            vncWidget;
-        GLMotif::Button*      disconnectButton;
+        GLMotif::Button*      closeButton;
         GLMotif::Label*       messageLabel;
 
     private:

@@ -166,7 +166,7 @@ VncVislet::VncVislet(int numArguments, const char* const arguments[]) :
     enableClickThrough(true),
     popupWindow(0),
     vncWidget(0),
-    disconnectButton(0),
+    closeButton(0),
     messageLabel(0)
 {
     parseArguments(numArguments, arguments);
@@ -322,7 +322,7 @@ void VncVislet::getPassword(VncManager::PasswordRetrievalCompletionThunk& passwo
 
 //----------------------------------------------------------------------
 
-void VncVislet::disconnectButtonCallback(GLMotif::Button::CallbackData* cbData)
+void VncVislet::closeButtonCallback(GLMotif::Button::CallbackData* cbData)
 {
     disable();
 }
@@ -416,9 +416,9 @@ template<class PopupWindowClass>
 void VncVislet::closeAllPopupWindows()
 {
     closePopupWindow(popupWindow);
-    vncWidget        = 0;  // vncWidget is owned by (a descendent of) popupWindow
-    disconnectButton = 0;  // disconnectButton is owned by (a descendent of) popupWindow
-    messageLabel     = 0;  // messageLabel is owned by (a descendent of) popupWindow
+    vncWidget    = 0;  // vncWidget is owned by (a descendent of) popupWindow
+    closeButton  = 0;  // closeButton is owned by (a descendent of) popupWindow
+    messageLabel = 0;  // messageLabel is owned by (a descendent of) popupWindow
 }
 
 
@@ -450,11 +450,11 @@ void VncVislet::updateUIState()
                         controlsRowCol->setOrientation(GLMotif::RowColumn::HORIZONTAL);
                         controlsRowCol->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 
-                        disconnectButton = new GLMotif::Button("DisconnectButton", controlsRowCol, "Disconnect");
-                        messageLabel     = new GLMotif::Label("Messages", controlsRowCol, "Ready");
+                        closeButton  = new GLMotif::Button("CloseButton", controlsRowCol, "Close");
+                        messageLabel = new GLMotif::Label("Messages", controlsRowCol, "Ready");
                         new GLMotif::Blind("Blind1", controlsRowCol);
 
-                        disconnectButton->getSelectCallbacks().add(this, &VncVislet::disconnectButtonCallback);
+                        closeButton->getSelectCallbacks().add(this, &VncVislet::closeButtonCallback);
                     }
                     controlsRowCol->manageChild();
 
