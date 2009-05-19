@@ -129,25 +129,31 @@ namespace Voltaic {
         virtual bool sendPointerEvent(int x, int y, int buttonMask);
         virtual bool sendClientCutText(const char* str, size_t len);
 
-        virtual bool sendStringViaKeyEvents( const char* str,
-                                             size_t      len,
-                                             rfbCARD32   tabKeySym         = 0xff09,
-                                             rfbCARD32   enterKeySym       = 0xff0d,
-                                             rfbCARD32   leftControlKeySym = 0xffe3 );
-
-        bool sendCStringViaKeyEvents( const char* cstr,
-                                      rfbCARD32   tabKeySym         = 0xff09,
-                                      rfbCARD32   enterKeySym       = 0xff0d,
-                                      rfbCARD32   leftControlKeySym = 0xffe3 )
-        {
-            return !cstr || sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
-        }
-
         // The startup and shutdown  methods are pass-throughs to the vncManager object.
         virtual void startup(const VncManager::RFBProtocolStartupData& rfbProtocolStartupData);
         virtual void shutdown();
 
+        const GLMotif::Point& getLastClickPoint() const { return lastClickPoint; }
+
     public:
+        // Pass-throughs to VncManager:
+        virtual bool sendStringViaKeyEvents( const char* str,
+                                             size_t      len,
+                                             rfbCARD32   tabKeySym         = 0xff09,
+                                             rfbCARD32   enterKeySym       = 0xff0d,
+                                             rfbCARD32   leftControlKeySym = 0xffe3 )
+        {
+            return (vncManager != 0) && vncManager->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
+        }
+
+        virtual bool sendCStringViaKeyEvents( const char* cstr,
+                                              rfbCARD32   tabKeySym         = 0xff09,
+                                              rfbCARD32   enterKeySym       = 0xff0d,
+                                              rfbCARD32   leftControlKeySym = 0xffe3 )
+        {
+            return (vncManager != 0) && vncManager->sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
+        }
+
         bool                      getRfbIsOpen()             const { return !vncManager ? false                        : vncManager->getRfbIsOpen(); }
         bool                      getRfbIsSameMachine()      const { return !vncManager ? false                        : vncManager->getRfbIsSameMachine(); }
         const char*               getRfbDesktopHost()        const { return !vncManager ? 0                            : vncManager->getRfbDesktopHost(); }  // 0 if connected by listening
@@ -164,8 +170,6 @@ namespace Voltaic {
         const rfbServerInitMsg*   getRfbServerInitMsg()      const { return !vncManager ? (const rfbServerInitMsg*)0   : vncManager->getRfbServerInitMsg(); }
         rfbCARD8                  getRfbCurrentEncoding()    const { return !vncManager ? (rfbCARD8)rfbEncodingRaw     : vncManager->getRfbCurrentEncoding(); }
         bool                      getRfbIsBigEndian()        const { return !vncManager ? false                        : vncManager->getRfbIsBigEndian(); }
-
-        const GLMotif::Point&     getLastClickPoint()        const { return lastClickPoint; }
 
     public:
         static const GLfloat DefaultDisplayWidthMultiplier;   // = 1.0

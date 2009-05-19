@@ -824,18 +824,21 @@ namespace Voltaic {
         virtual bool sendPointerEvent(int x, int y, int buttonMask);
         virtual bool sendClientCutText(const char* str, size_t len);
 
-        virtual bool sendStringViaKeyEvents( const char* str,
-                                             size_t      len,
-                                             rfbCARD32   tabKeySym         = 0xff09,
-                                             rfbCARD32   enterKeySym       = 0xff0d,
-                                             rfbCARD32   leftControlKeySym = 0xffe3 );
+        bool sendStringViaKeyEvents( const char* str,
+                                     size_t      len,
+                                     rfbCARD32   tabKeySym         = 0xff09,
+                                     rfbCARD32   enterKeySym       = 0xff0d,
+                                     rfbCARD32   leftControlKeySym = 0xffe3 )
+        {
+            return (rfbProto != 0) && rfbProto->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
+        }
 
         bool sendCStringViaKeyEvents( const char* cstr,
                                       rfbCARD32   tabKeySym         = 0xff09,
                                       rfbCARD32   enterKeySym       = 0xff0d,
                                       rfbCARD32   leftControlKeySym = 0xffe3)
         {
-            return !cstr || sendStringViaKeyEvents(cstr, (size_t)::strlen(cstr), tabKeySym, enterKeySym, leftControlKeySym);
+            return (rfbProto != 0) && rfbProto->sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
         }
 
     public:

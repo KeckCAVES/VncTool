@@ -1,18 +1,21 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<title>VNC Tool Documentation</title>
+<title>VncTool and VncVislet Documentation</title>
 </head>
 <body>
-<h1>VNC Tool Documentation</h1>
-<p>This document describes the configuration and operation of the VNC Tool.
-The VNC Tool implements a VNC (Virtual Network Computing) client within the Vrui environment and provides a special <i>data beaming</i> feature for exporting data from the Vrui environment to a remote computer.
-</p><p>VNC servers and clients communicate via the <a href="http://www.realvnc.com/docs/rfbproto.pdf">RFB protocol.</a> (RFB stands for Remote Frame Buffer, the original name of the system before it was known as VNC.)
+<h1>VncTool and VncVislet Documentation</h1>
+<p>This document describes the configuration and operation of the <a href="#VncTool">VncTool</a> and the <a href="#VncVislet">VncVislet</a>.
+The VncTool (using the companion VncVislet) implements a VNC (Virtual Network Computing) client within the Vrui environment and provides a special <i>data beaming</i> feature for exporting data from the Vrui environment to a remote computer.
+</p>
+
+<h2>A Quick Aside: What is VNC?</h2>
+<p>VNC servers and clients communicate via the <a href="http://www.realvnc.com/docs/rfbproto.pdf">RFB protocol.</a> (RFB stands for Remote Frame Buffer, the original name of the system before it was known as VNC.)
 The RFB protocol provides a client-server environment for controlling a remote computer through its graphical user interface.
 Whenever a portion of the screen on the remote computer changes, the VNC server running on the remote computer transmits that portion of the screen to the VNC client (which is running on the local computer).
 In addition, the RFB protocol allows keypresses and mouse events from the client computer to be transmitted to the remote computer,
 clipboard information to be shared between the two computers, and the remote computer's bell events to be transmitted to the client computer.
-</p><p>The VNC Tool implements version 3.3 of the client side of the RFB protocol.  Transmission of left mouse button events is supported, however clipboard data and keypresses are not supported.
+</p><p>The VncVislet implements version 3.3 of the client side of the RFB protocol.  Transmission of left mouse button events is supported, however clipboard data and keypresses are not supported.
 </p><p>A special feature called <i>data beaming</i> is provided whereby the data contained in dialog boxes within the Vrui environment can be transmitted to the remote computer.
 The transmission of the data is in text form and uses the keypress transmission feature of the RFB protocol to accomplish this.
 </p><p>VNC offers many advantages for this application, including:
@@ -23,21 +26,24 @@ The transmission of the data is in text form and uses the keypress transmission 
 </ul>
 </p>
 
-<h2>Using The VNC Tool</h2>
-<p>First, you must set up the VNC Tool in your Vrui.cfg file.  See the <i>Configuration</i> section for details.
-</p><p>Within Vrui, load the VNC Tool into the environment, mapping it to a convenient device button.
+<a name="VncTool">
+<h2>Using The VncTool</h2>
+<p>First, install the VncTool and VncVislet plugins in the Vrui installation directory.
+Then, set up the VncTool in your Vrui.cfg file (The VncVislet requires no special configuration).
+See the <i>Configuration</i> section for details.
+</p><p>Within Vrui, load the VncTool into the environment, mapping it to a convenient device button.
 This device button will be referred to as the "VNC button" in the remainder of this document.
 Once loaded, the tool presents a dialog box like the following:
 </p><p><img src="vruivnc-documentation-image-1.png" />
 </p><p>The left part of the dialog contains servers (configured in Vrui.cfg) to which you can connect.  The right part of the dialog contains status indicators and controls for the VNC interaction.
-</p><p>To connect to a remote server, click on its name in the dialog.  A keyboard will pop up with which you can enter the password for the remote server.  Once you have entered the password, click its ENTER key to submit the password.  Once you are connected, the VNC Tool dialog expands to display the remote server's desktop:
+</p><p>To connect to a remote server, click on its name in the dialog.  A keyboard will pop up with which you can enter the password for the remote server.  Once you have entered the password, click its ENTER key to submit the password.  Once you are connected, the VncTool dialog expands to display the remote server's desktop:
 </p><p><img src="vruivnc-documentation-image-2.png" />
 </p><p>At this point, provided that the <i>Enable click-through</i> toggle is enabled, you can use the VNC button to send click, double-click and drag mouse events to the remote computer's desktop.
 </p>
 
 <h2>Data Beaming</h2>
-<p>The <i>Data beaming</i> feature of the VNC Tool transmits data from a dialog box within the Vrui environment to the remote computer.  This is implemented by sending keypresses representing the data to the remote computer.  This technique makes cross-platform data transmission easy, but is somewhat risky if the keyboard focus on the remote computer is not set correctly prior to beaming.  For this reason, the <i>Enable data beaming</i> toggle is turned off by default in the controls section of the VNC Tool dialog.  Before enabling data beaming, make sure that you have clicked through to an appropriate window on the remote computer which will receive the data.  To be extra safe, turn off the <i>Enable click-through</i> toggle so that the focus is not inadvertently reset while beaming data.
-</p><p>Once you have set the keyboard focus on the remote computer and enabled data beaming, click another dialog from which you wish to beam data with the VNC button.  The data contained within the clicked dialog will be transmitted to remote computer.  Note also that a status item appears in the VNC Tool dialog indicating the name of the last selected dialog, i.e., the dialog from which data was last beamed.
+<p>The <i>Data beaming</i> feature of the VncTool transmits data from a dialog box within the Vrui environment to the remote computer.  This is implemented by sending keypresses representing the data to the remote computer.  This technique makes cross-platform data transmission easy, but is somewhat risky if the keyboard focus on the remote computer is not set correctly prior to beaming.  For this reason, the <i>Enable data beaming</i> toggle is turned off by default in the controls section of the VncTool dialog.  Before enabling data beaming, make sure that you have clicked through to an appropriate window on the remote computer which will receive the data.  To be extra safe, turn off the <i>Enable click-through</i> toggle so that the focus is not inadvertently reset while beaming data.
+</p><p>Once you have set the keyboard focus on the remote computer and enabled data beaming, click another dialog from which you wish to beam data with the VNC button.  The data contained within the clicked dialog will be transmitted to remote computer.  Note also that a status item appears in the VncTool dialog indicating the name of the last selected dialog, i.e., the dialog from which data was last beamed.
 </p><p><img src="vruivnc-documentation-image-3.png" />
 </p><p>The standard way to beam data is to click a dialog with the VNC button.  After the first time, you can simplify your data transfer workflow by enabling the <i>Auto-beam</i> toggle.  This will beam data from the dialog indicated by the "Last selected dialog" status regardless of where the VNC button is clicked.  This allows you to be working with another tool and to simply click the VNC button without pointing back at the source dialog every time.
 </p>
@@ -46,8 +52,8 @@ Once loaded, the tool presents a dialog box like the following:
 <p>Data beaming sends data to the remote computer as follows:
 <ul>
   <li><i>beginDataString</i> (as configured in Vrui.cfg)</li>
-  <li>timestamp (optionally, if <i>Timestamp beamed data</i> is enabled in the VNC Tool dialog)</li>
-  <li>beamed data tag (optionally, if <i>Beamed data tag</i> is set in the VNC Tool dialog)</li>
+  <li>timestamp (optionally, if <i>Timestamp beamed data</i> is enabled in the VncTool dialog)</li>
+  <li>beamed data tag (optionally, if <i>Beamed data tag</i> is set in the VncTool dialog)</li>
   <li>name of source dialog</li>
   <li>data field 1</li>
   <li>data field 2</li>
@@ -56,19 +62,19 @@ Once loaded, the tool presents a dialog box like the following:
 </ul>
 </p>
 </p><p>In addition, the string <i>interDatumString</i>, configured in Vrui.cfg, is inserted between each item listed above.  The default values for for <i>beginDataString,</i> <i>endDataString</i> and <i>interDatumString</i> are, respectively, "", "\n" (newline) and "\t" (tab).  These default settings are suitable for entry into Microsoft Excel, for example.
-</p><p>The beamed data tag is useful for tagging data sent to the remote computer according to its meaning.  You can change this tag for subsequent data beaming at any time by clicking the <i>Change</i> button next to the beamed data tag field in the VNC Tool dialog.  If this string is empty, then no data tag is transmitted.
+</p><p>The beamed data tag is useful for tagging data sent to the remote computer according to its meaning.  You can change this tag for subsequent data beaming at any time by clicking the <i>Change</i> button next to the beamed data tag field in the VncTool dialog.  If this string is empty, then no data tag is transmitted.
 </p><p>The data fields are obtained from the source dialog by traversing its controls in a depth-first order.
 </p><p>Note that the initial values for <i>beginDataString,</i> <i>endDataString,</i> <i>interDatumString</i> and the initial settings for <i>Enable click-through,</i> <i>Timestamp beamed data,</i> <i>Beamed data tag</i> and <i>Auto-beam</i> are configurable in Vrui.cfg on a server-by-server basis.  The initial setting for <i>Enable data beaming</i> is always false.
 </p>
 
 <h2>Configuration</h2>
-<p>The VNC Tool is configured in your Vrui.cfg file.  See the Vrui documentation for general information about this file.
-</p><p>Configuration of the VNC Tool involves the following steps:
+<p>The VncTool is configured in your Vrui.cfg file.  See the Vrui documentation for general information about this file.
+</p><p>Configuration of the VncTool involves the following steps:
 <ul>
   <li>Find the section of Vrui.cfg for your installation</li>
-  <li>Make the VNC Tool accessible to Vrui</li>
+  <li>Make the VncTool accessible to Vrui</li>
   <li>Create a VncTool section</li>
-  <li>List VNC Tool in the toolClassNames</li>
+  <li>List VncTool in the toolClassNames</li>
   <li>Set up hostnames</li>
   <li>(Optional) Configure defaults</li>
   <li>(Optional) Configure defaults for each host</li>
@@ -78,11 +84,11 @@ Once loaded, the tool presents a dialog box like the following:
 
 <h3>Find the section of Vrui.cfg for your installation</h3>
 </p><p>The Vrui.cfg file is separated into sections for various installations.
-The VNC Tool settings must be entered into any sections for which you will be running an installation.
+The VncTool settings must be entered into any sections for which you will be running an installation.
 </p>
 
-<h3>Make the VNC Tool accessible to Vrui</h3>
-</p><p>If the VNC Tool is not compiled directly into your Vrui installation, you can tell Vrui where to find the VNC Tool using an <i>toolSearchPaths</i> entry.
+<h3>Make the VncTool accessible to Vrui</h3>
+</p><p>If the VncTool is not compiled directly into your Vrui installation, you can tell Vrui where to find the VncTool using an <i>toolSearchPaths</i> entry.
 This entry tells Vrui where to look for tools.  For example:
 <code><blockquote>
 toolSearchPaths ( "/usr/local/Vrui-1.0/lib/VRTools/", "/Users/blackguard/develop/vruivnc/" )
@@ -90,7 +96,7 @@ toolSearchPaths ( "/usr/local/Vrui-1.0/lib/VRTools/", "/Users/blackguard/develop
 Note that the standard Vrui tools directory must also be included.
 </p>
 
-<h3>List VNC Tool in toolClassNames</h3>
+<h3>List VncTool in toolClassNames</h3>
 </p><p>Add "VncTool" to the <i>toolClassNames</i> entry.
 For example,
 <code><blockquote>
@@ -119,7 +125,7 @@ hostNames ( localhost, "toro.local", reflecta, lumina, "Cave-Xenon-MacPro-2.loca
 </p>
 
 <h3>(Optional) Configure defaults</h3>
-<p>Several aspects of the VNC Tool can be configured within the VNC Tool subsection.  The following example shows these entries, and details for each entry can be found in the Appendix.
+<p>Several aspects of the VncTool can be configured within the VncTool subsection.  The following example shows these entries, and details for each entry can be found in the Appendix.
 <code><blockquote>
 beginDataString&nbsp;&nbsp;""<br/>
 interDatumString&nbsp;"\\t"<br/>
@@ -135,7 +141,7 @@ rfbPort&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0
 requestedEncodings&nbsp;""<br/>
 sharedDesktopFlag&nbsp;&nbsp;true<br/>
 </blockquote></code>
-</p><p>Note that when enclosing a string in double quotes, it is necessary to double the backslashes because the parser for double-quoted strings interprets \c for some character c as c.  Special characters like tab are expanded by the VNC Tool after the Vrui configuration file parser has parsed the file.  See the Appendix for a list of special escape characters.
+</p><p>Note that when enclosing a string in double quotes, it is necessary to double the backslashes because the parser for double-quoted strings interprets \c for some character c as c.  Special characters like tab are expanded by the VncTool after the Vrui configuration file parser has parsed the file.  See the Appendix for a list of special escape characters.
 </p>
 
 <h3>(Optional) Configure defaults for each host</h3>
@@ -199,6 +205,9 @@ section VncTool<br/>
 endsection<br/>
 </blockquote></code>
 </p>
+
+<a name="VncVislet">
+<h2>Using The VncVislet</h2>
 
 <h1>Appendix - VncTool Vrui.cfg Entry Descriptions</h1>
 <table>

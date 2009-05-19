@@ -1851,17 +1851,4 @@ bool VncManager::sendClientCutText(const char* str, size_t len)
     return (rfbProto != 0) && rfbProto->sendClientCutText(str, len);
 }
 
-
-
-bool VncManager::sendStringViaKeyEvents( const char* str,
-                                         size_t      len,
-                                         rfbCARD32   tabKeySym,
-                                         rfbCARD32   enterKeySym,
-                                         rfbCARD32   leftControlKeySym )
-{
-    return (rfbProto != 0) && rfbProto->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
-}
-
-
-
 }  // end of namespace Voltaic

@@ -266,17 +266,6 @@ bool VncWidget::sendClientCutText(const char* str, size_t len)
 
 
 
-bool VncWidget::sendStringViaKeyEvents( const char* str,
-                                        size_t      len,
-                                        rfbCARD32   tabKeySym,
-                                        rfbCARD32   enterKeySym,
-                                        rfbCARD32   leftControlKeySym )
-{
-    return (vncManager != 0) && vncManager->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
-}
-
-
-
 void VncWidget::startup(const VncManager::RFBProtocolStartupData& rfbProtocolStartupData)
 {
     if (vncManager)

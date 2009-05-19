@@ -137,7 +137,7 @@ namespace Voltaic {
                                      rfbCARD32   enterKeySym       = 0xff0d,
                                      rfbCARD32   leftControlKeySym = 0xffe3 )
         {
-            return !vncWidget ? false : vncWidget->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
+            return (vncWidget != 0) && vncWidget->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
         }
 
         bool sendCStringViaKeyEvents( const char* cstr,
@@ -145,7 +145,7 @@ namespace Voltaic {
                                       rfbCARD32   enterKeySym       = 0xff0d,
                                       rfbCARD32   leftControlKeySym = 0xffe3 )
         {
-            return !vncWidget ? false : vncWidget->sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
+            return (vncWidget != 0) && vncWidget->sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
         }
 
         bool                      getRfbIsOpen()             const { return !vncWidget ? false                        : vncWidget->getRfbIsOpen(); }
