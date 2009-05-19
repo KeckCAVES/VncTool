@@ -20,8 +20,8 @@
   02111-1307 USA
 ***********************************************************************/
 
-#ifndef VNCTOOL_INCLUDED
-#define VNCTOOL_INCLUDED
+#ifndef __VNCTOOL_H_INCLUDED__
+#define __VNCTOOL_H_INCLUDED__
 
 #include <string>
 #include <vector>
@@ -38,7 +38,7 @@
 #include <Vrui/Tools/Tool.h>
 #include <Vrui/Tools/UtilityTool.h>
 
-#include "VncWidget.h"
+#include "VncVislet.h"
 #include "KeyboardDialog.h"
 
 
@@ -102,9 +102,7 @@ namespace Voltaic {
 
     //----------------------------------------------------------------------
     class VncTool :
-        public Vrui::UtilityTool,
-        public VncManager::MessageManager,
-        public VncManager::PasswordRetrievalThunk
+        public Vrui::UtilityTool
     {
     friend class VncToolFactory;
 
@@ -170,11 +168,12 @@ namespace Voltaic {
         typedef std::list<Animation*> AnimationList;
 
     public:
+        friend class PasswordDialogCompletionCallback;
         class PasswordDialogCompletionCallback : public KeyboardDialog::CompletionCallback
         {
         public:
-            PasswordDialogCompletionCallback(VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk) :
-                passwordRetrievalCompletionThunk(passwordRetrievalCompletionThunk)
+            PasswordDialogCompletionCallback(VncTool* vncTool) :
+                vncTool(vncTool)
             {
             }
 
@@ -182,15 +181,18 @@ namespace Voltaic {
             virtual void keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled);
 
         protected:
-            VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk;
+            VncTool* const vncTool;
         };
 
     public:
+        friend class BeamedDataTagInputCompletionCallback;
         class BeamedDataTagInputCompletionCallback : public KeyboardDialog::CompletionCallback
         {
         public:
-            BeamedDataTagInputCompletionCallback( GLMotif::PopupWindow* popupWindow,
+            BeamedDataTagInputCompletionCallback( VncTool*              vncTool,
+                                                  GLMotif::PopupWindow* popupWindow,
                                                   GLMotif::Label&       fieldToUpdate ) :
+                vncTool(vncTool),
                 popupWindow(popupWindow),
                 fieldToUpdate(fieldToUpdate)
             {
@@ -200,6 +202,7 @@ namespace Voltaic {
             virtual void keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled);
 
         protected:
+            VncTool* const        vncTool;
             GLMotif::PopupWindow* popupWindow;
             GLMotif::Label&       fieldToUpdate;
         };
@@ -216,27 +219,17 @@ namespace Voltaic {
         virtual void changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData);
         virtual void buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice::ButtonCallbackData* cbData);
         virtual GLMotif::Ray calcSelectionRay() const;  // calculates the selection ray based on current device position/orientation
+        virtual void updateUIState();
         virtual void clearHostSelectorButtons() const;
+        virtual void initiatePasswordRetrieval();
 
     public:
         virtual void frame();
         virtual void display(GLContextData& contextData) const;
 
-    public:
-        // VncManager::MessageManager methods:
-        virtual void internalErrorMessage(const char* where, const char* message);
-        virtual void errorMessage(const char* where, const char* message);
-        virtual void errorMessageFromServer(const char* where, const char* message);
-        virtual void infoServerInitStarted();
-        virtual void infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion);
-        virtual void infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult);
-        virtual void infoServerInitCompleted(bool succeeded);
-        virtual void infoCloseStarted();
-        virtual void infoCloseCompleted();
-
-    public:
-        // VncManager::PasswordRetrievalThunk method:
-        virtual void getPassword(VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk);
+    protected:
+        template<class PopupWindowClass>
+            void closePopupWindow(PopupWindowClass*& var);
 
     private:
         static VncToolFactory* factory;  // pointer to the factory object for this class
@@ -255,8 +248,8 @@ namespace Voltaic {
         GLMotif::Label*                       beamedDataTagField;                // sets extra "tag" field for beamed data
         GLMotif::Label*                       lastSelectedDialogDisplay;
         GLMotif::Widget*                      lastSelectedDialog;
-        GLMotif::Label*                       messageDisplay;
-        VncWidget*                            vncWidget;
+        GLMotif::Label*                       messageLabel;
+        VncVislet*                            vncVislet;
         PasswordDialogCompletionCallback*     passwordCompletionCallback;
         BeamedDataTagInputCompletionCallback* beamedDataTagInputCompletionCallback;
         KeyboardDialog*                       passwordKeyboardDialog;
@@ -271,4 +264,4 @@ namespace Voltaic {
 
 }  // end of namespace Voltaic
 
-#endif  // VNCTOOL_INCLUDED
+#endif  // #ifndef __VNCTOOL_H_INCLUDED__

@@ -35,56 +35,6 @@ inline Images::RGBImage::Color convertPixelToRGB(const rfbPixelFormat& format, r
 
 
 
-static const rfbPixelFormat DefaultRequestedPixelFormat =
-{
-     32,  // rfbCARD8  bitsPerPixel;  /* 8,16,32 only */
-
-     24,  // rfbCARD8  depth;         /* 8 to 32 */
-
-      1,  // rfbCARD8  bigEndian;     /* True if multi-byte pixels are interpreted
-          //                             as big endian, or if single-bit-per-pixel
-          //                             has most significant bit of the byte
-          //                             corresponding to first (leftmost) pixel. Of
-          //                             course this is meaningless for 8 bits/pix */
-
-      1,  // rfbCARD8  trueColour;    /* If false then we need a "colour map" to
-          //                             convert pixels to RGB.  If true, xxxMax and
-          //                             xxxShift specify bits used for red, green
-          //                             and blue */
-
-
-          // /* the following fields are only meaningful if trueColour is true */
-
-    255,  // rfbCARD16 redMax;        /* maximum red value (= 2^n - 1 where n is the
-          //                             number of bits used for red). Note this
-          //                             value is always in big endian order. */
-
-    255,  // rfbCARD16 greenMax;      /* similar for green */
-
-    255,  // rfbCARD16 blueMax;       /* and blue */
-
-     16,  // rfbCARD8  redShift;      /* number of shifts needed to get the red
-          //                             value in a pixel to the least significant
-          //                             bit. To find the red value from a given
-          //                             pixel, do the following:
-          //                             1) Swap pixel value according to bigEndian
-          //                                (e.g. if bigEndian is false and host byte
-          //                                order is big endian, then swap).
-          //                             2) Shift right by redShift.
-          //                             3) AND with redMax (in host byte order).
-          //                             4) You now have the red value between 0 and
-          //                                redMax. */
-
-      8,  // rfbCARD8  greenShift;    /* similar for green */
-
-      0,  // rfbCARD8  blueShift;     /* and blue */
-
-      0,  // rfbCARD8  pad1;
-      0   // rfbCARD16 pad2;
-};
-
-
-
 static void writeString(Comm::MulticastPipe& pipe, const std::string& s)
 {
     const std::string::size_type len = s.size();
@@ -1381,7 +1331,12 @@ bool VncManager::ActionQueue::performQueuedActions(VncManager& vncManager)  // c
         else
         {
             if (!action->perform(vncManager))
-                vncManager.messageManager.internalErrorMessage("VncManager::ActionQueue::performQueuedActions", "action failed");
+            {
+                static const char messageFormat[] = "action failed for item type %d";
+                char message[sizeof(messageFormat)+20];
+                snprintf(message, sizeof(message), messageFormat, (int)action->itemType);
+                vncManager.messageManager.internalErrorMessage("VncManager::ActionQueue::performQueuedActions", message);
+            }
 
             delete action;
 
@@ -1457,9 +1412,9 @@ void* VncManager::RFBProtocolImplementation::threadStartForMasterNode(RFBProtoco
                              : initViaListen(startupData.rfbPort, startupData.requestedPixelFormat, startupData.requestedEncodings, startupData.sharedDesktopFlag);
 
     if (initSucceeded)
-        initSucceeded =  ( sendSetPixelFormat() &&
-                           sendSetEncodings()   &&
-                           sendFramebufferUpdateRequest(0, 0, si.framebufferWidth, si.framebufferHeight, false) );
+        initSucceeded = ( sendSetPixelFormat() &&
+                          sendSetEncodings()   &&
+                          sendFramebufferUpdateRequest(0, 0, si.framebufferWidth, si.framebufferHeight, false) );
 
     if (initSucceeded)
         while (getIsOpen() && handleRFBServerMessage())
@@ -1725,7 +1680,57 @@ void VncManager::UIPasswordRetrievalCompletionThunk::postPassword(const char* th
 
 
 //----------------------------------------------------------------------
-// VncManager::VncManager methods
+// VncManager::VncManager static data members and methods
+
+const rfbPixelFormat VncManager::DefaultRequestedPixelFormat =  // static member
+{
+     32,  // rfbCARD8  bitsPerPixel;  /* 8,16,32 only */
+
+     24,  // rfbCARD8  depth;         /* 8 to 32 */
+
+      1,  // rfbCARD8  bigEndian;     /* True if multi-byte pixels are interpreted
+          //                             as big endian, or if single-bit-per-pixel
+          //                             has most significant bit of the byte
+          //                             corresponding to first (leftmost) pixel. Of
+          //                             course this is meaningless for 8 bits/pix */
+
+      1,  // rfbCARD8  trueColour;    /* If false then we need a "colour map" to
+          //                             convert pixels to RGB.  If true, xxxMax and
+          //                             xxxShift specify bits used for red, green
+          //                             and blue */
+
+
+          // /* the following fields are only meaningful if trueColour is true */
+
+    255,  // rfbCARD16 redMax;        /* maximum red value (= 2^n - 1 where n is the
+          //                             number of bits used for red). Note this
+          //                             value is always in big endian order. */
+
+    255,  // rfbCARD16 greenMax;      /* similar for green */
+
+    255,  // rfbCARD16 blueMax;       /* and blue */
+
+     16,  // rfbCARD8  redShift;      /* number of shifts needed to get the red
+          //                             value in a pixel to the least significant
+          //                             bit. To find the red value from a given
+          //                             pixel, do the following:
+          //                             1) Swap pixel value according to bigEndian
+          //                                (e.g. if bigEndian is false and host byte
+          //                                order is big endian, then swap).
+          //                             2) Shift right by redShift.
+          //                             3) AND with redMax (in host byte order).
+          //                             4) You now have the red value between 0 and
+          //                                redMax. */
+
+      8,  // rfbCARD8  greenShift;    /* similar for green */
+
+      0,  // rfbCARD8  blueShift;     /* and blue */
+
+      0,  // rfbCARD8  pad1;
+      0   // rfbCARD16 pad2;
+};
+
+
 
 VncManager::~VncManager()
 {

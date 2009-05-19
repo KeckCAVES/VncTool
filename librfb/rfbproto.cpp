@@ -431,7 +431,7 @@ bool RFBProtocol::initViaListen(unsigned              theRfbPort,
             // Get the IP address for desktopHost
             uint32_t hostAddr = 0;  // local
 
-            if (!*desktopHost)  // 0 or empty ==> local
+            if (!desktopHost || !*desktopHost)  // 0 or empty ==> local
                 isSameMachine = true;
             else
             {

@@ -36,19 +36,20 @@ endif
 
 
 # List all project targets:
-ALL = vruivnc TestVncWidget libVncTool.$(VRUI_PLUGINFILEEXT)
+ALL = vruivnc TestVncWidget libVncTool.$(VRUI_PLUGINFILEEXT) libVncVislet.$(VRUI_PLUGINFILEEXT)
 
 .PHONY: all
 all: $(ALL)
 
 install: all
-	sudo cp libVncTool.$(VRUI_PLUGINFILEEXT) $(VRUIDIR)/lib/VRTools/
+	cp libVncTool.$(VRUI_PLUGINFILEEXT) $(VRUI_LIBDIR)/VRTools/
+	cp libVncVislet.$(VRUI_PLUGINFILEEXT) $(VRUI_LIBDIR)/VRVislets/
 
 # Rule to remove all targets:
 .PHONY: clean
 clean:
 	-rm -rf o plugin-o
-	-rm -f $(ALL) libVncTool.*
+	-rm -f $(ALL) libVncVislet.* libVncTool.* 
 
 
 # Pattern rules to compile C sources:
@@ -58,7 +59,7 @@ o/%.o: %.c
 	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
 
 plugin-o/%.o: %.c
-	@mkdir -p o/$(*D)
+	@mkdir -p plugin-o/$(*D)
 	@echo Compiling $<...
 	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
 
@@ -68,7 +69,7 @@ o/%.o: librfb/%.c
 	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
 
 plugin-o/%.o: librfb/%.c
-	@mkdir -p o/$(*D)
+	@mkdir -p plugin-o/$(*D)
 	@echo Compiling $<...
 	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
 
@@ -133,6 +134,10 @@ plugin-o/VncWidget.o: VncWidget.cpp VncWidget.h VncManager.h librfb/rfbproto.h
 
 plugin-o/KeyboardDialog.o: KeyboardDialog.cpp KeyboardDialog.h
 
+plugin-o/VncVislet.o: VncVislet.cpp VncVislet.h VncWidget.h VncManager.h librfb/rfbproto.h KeyboardDialog.h
+
 plugin-o/VncTool.o: VncTool.cpp VncTool.h VncWidget.h VncManager.h librfb/rfbproto.h KeyboardDialog.h
+
+libVncVislet.$(VRUI_PLUGINFILEEXT): plugin-o/VncVislet.o plugin-o/KeyboardDialog.o plugin-o/VncWidget.o plugin-o/VncManager.o plugin-o/rfbproto.o plugin-o/d3des.o
 
 libVncTool.$(VRUI_PLUGINFILEEXT): plugin-o/VncTool.o plugin-o/KeyboardDialog.o plugin-o/VncWidget.o plugin-o/VncManager.o plugin-o/rfbproto.o plugin-o/d3des.o

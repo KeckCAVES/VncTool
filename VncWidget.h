@@ -135,12 +135,12 @@ namespace Voltaic {
                                              rfbCARD32   enterKeySym       = 0xff0d,
                                              rfbCARD32   leftControlKeySym = 0xffe3 );
 
-        bool sendStringViaKeyEvents( const char* str,
-                                     rfbCARD32   tabKeySym         = 0xff09,
-                                     rfbCARD32   enterKeySym       = 0xff0d,
-                                     rfbCARD32   leftControlKeySym = 0xffe3 )
+        bool sendCStringViaKeyEvents( const char* cstr,
+                                      rfbCARD32   tabKeySym         = 0xff09,
+                                      rfbCARD32   enterKeySym       = 0xff0d,
+                                      rfbCARD32   leftControlKeySym = 0xffe3 )
         {
-            return !str || sendStringViaKeyEvents(str, (size_t)::strlen(str), tabKeySym, enterKeySym, leftControlKeySym);
+            return !cstr || sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
         }
 
         // The startup and shutdown  methods are pass-throughs to the vncManager object.

@@ -29,17 +29,18 @@
 #include <GL/GLFont.h>
 #include <GL/GLMaterial.h>
 #include <GL/GLPolylineTube.h>
+#include <GLMotif/Widget.h>
+#include <GLMotif/WidgetManager.h>
 #include <GLMotif/WidgetAlgorithms.h>
 #include <GLMotif/WidgetManager.h>
-#include <GLMotif/Event.h>
-#include <GLMotif/StyleSheet.h>
-#include <GLMotif/TitleBar.h>
 #include <GLMotif/RowColumn.h>
 #include <GLMotif/Blind.h>
 #include <GLMotif/ToggleButton.h>
 #include <GLMotif/TextField.h>
-#include <GLMotif/WidgetManager.h>
+#include <GLMotif/TitleBar.h>
+#include <GLMotif/StyleSheet.h>
 #include <Vrui/ToolManager.h>
+#include <Vrui/VisletManager.h>
 #include <Vrui/Vrui.h>
 
 #include "VncTool.h"
@@ -966,13 +967,43 @@ void VncTool::PasswordDialogCompletionCallback::keyboardDialogDidComplete(Keyboa
     if (!cancelled)
         retrievedPassword = keyboardDialog.getBuffer();
 
-    // Must be performed last before returning:
-    passwordRetrievalCompletionThunk.postPassword(retrievedPassword.c_str());
+    keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
+    if (vncTool->passwordKeyboardDialog == &keyboardDialog)
+        vncTool->passwordKeyboardDialog = 0;
 
-    // The following are OK to do before returning...
+    if (vncTool && retrievedPassword.size() > 0)
+    {
+        Vrui::VisletManager* const visletManager = Vrui::getVisletManager();
+        Vrui::VisletFactory* const visletFactory = visletManager->loadClass("VncVislet");
+
+        char rfbPortStr[20];
+        snprintf(rfbPortStr, sizeof(rfbPortStr), "%d", vncTool->hostDescriptor->rfbPort);
+
+        const char* visletArgv[14];
+        size_t visletArgc = 0;
+        visletArgv[visletArgc++] = "hostname";
+        visletArgv[visletArgc++] = vncTool->hostDescriptor->desktopHost;
+        visletArgv[visletArgc++] = "password";
+        visletArgv[visletArgc++] = retrievedPassword.c_str();
+        visletArgv[visletArgc++] = "initViaConnect";
+        visletArgv[visletArgc++] = vncTool->hostDescriptor->initViaConnect ? "true" : "false";
+        visletArgv[visletArgc++] = "rfbPort";
+        visletArgv[visletArgc++] = rfbPortStr;
+        visletArgv[visletArgc++] = "sharedDesktopFlag";
+        visletArgv[visletArgc++] = vncTool->hostDescriptor->sharedDesktopFlag ? "true" : "false";
+        visletArgv[visletArgc++] = "enableClickThrough";
+        visletArgv[visletArgc++] = vncTool->enableClickThroughToggle->getToggle() ? "true" : "false";
+
+        if (vncTool->hostDescriptor->requestedEncodings)
+        {
+            visletArgv[visletArgc++] = "requestedEncodings";
+            visletArgv[visletArgc++] = vncTool->hostDescriptor->requestedEncodings;
+        }
+
+        vncTool->vncVislet = static_cast<VncVislet*>(visletManager->createVislet(visletFactory, visletArgc, visletArgv));
+    }
+
     VncManager::eraseStringContents(retrievedPassword);
-
-    keyboardDialog.getManager()->popdownWidget(&keyboardDialog);
 }
 
 
@@ -986,7 +1017,9 @@ void VncTool::BeamedDataTagInputCompletionCallback::keyboardDialogDidComplete(Ke
     if (!cancelled)
         fieldToUpdate.setLabel(keyboardDialog.getBuffer().c_str());
 
-    keyboardDialog.getManager()->popdownWidget(&keyboardDialog);
+    keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
+    if (vncTool->dataEntryKeyboardDialog == &keyboardDialog)
+        vncTool->dataEntryKeyboardDialog = 0;
 }
 
 
@@ -999,8 +1032,6 @@ VncToolFactory* VncTool::factory = 0;  // static member
 
 VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignment& inputAssignment) :
     Vrui::UtilityTool(factory, inputAssignment),
-    VncManager::MessageManager(),
-    VncManager::PasswordRetrievalThunk(),
     insideWidget(false),
     active(false),
     selectionRay(),
@@ -1014,26 +1045,26 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
     beamedDataTagField(0),
     lastSelectedDialogDisplay(0),
     lastSelectedDialog(0),
-    messageDisplay(0),
-    vncWidget(0),
+    messageLabel(0),
+    vncVislet(0),
     passwordCompletionCallback(0),
     beamedDataTagInputCompletionCallback(0),
     passwordKeyboardDialog(0),
     dataEntryKeyboardDialog(0),
     animations()
 {
-    // Create the popup window with the VncWidget and controls in it:
+    // Create the popup window with the controls in it:
 
     popupWindow = new GLMotif::PopupWindow("VncTool", Vrui::getWidgetManager(), "Vnc Tool");
     {
-        GLMotif::RowColumn* const topRowCol = new GLMotif::RowColumn("topRowCol", popupWindow, false);
+        GLMotif::RowColumn* const controlsRowCol = new GLMotif::RowColumn("controlsRowCol", popupWindow, false);
         {
-            GLMotif::RowColumn* const controlsRowCol = new GLMotif::RowColumn("controlsRowCol", topRowCol, false);
-            {
-                controlsRowCol->setOrientation(GLMotif::RowColumn::HORIZONTAL);
-                controlsRowCol->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+            controlsRowCol->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+            controlsRowCol->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 
-                hostSelector = new GLMotif::RadioBox("Hosts", controlsRowCol, false);
+            GLMotif::RowColumn* const hostarea = new GLMotif::RowColumn("hostarea", controlsRowCol, false);
+            {
+                hostSelector = new GLMotif::RadioBox("Hosts", hostarea, false);
                 {
                     hostSelector->setBorderWidth(hostSelector->getStyleSheet()->textfieldBorderWidth);
                     hostSelector->setBorderType(GLMotif::Widget::LOWERED);
@@ -1051,77 +1082,70 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
                             toggle->setHAlignment(GLFont::Left);
                     }
 
+
                     hostSelector->getValueChangedCallbacks().add(this, &VncTool::changeHostCallback);
                 }
                 hostSelector->manageChild();
 
-                GLMotif::RowColumn* const infoBox = new GLMotif::RowColumn("infoBox", controlsRowCol, false);
-                {
-                    infoBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
-
-                    enableClickThroughToggle = new GLMotif::ToggleButton("enableClickThroughToggle", infoBox, "Enable click-through");
-                    enableClickThroughToggle->getSelectCallbacks().add(this, &VncTool::enableClickThroughToggleCallback);
-
-                    enableBeamDataToggle = new GLMotif::ToggleButton("enableBeamDataToggle", infoBox, "Enable data beaming");
-
-                    timestampBeamedDataToggle = new GLMotif::ToggleButton("timestampBeamedDataToggle", infoBox, "Timestamp beamed data");
-
-                    GLMotif::RowColumn* const beamedDataTagFieldBox = new GLMotif::RowColumn("beamedDataTagFieldBox", infoBox, false);
-                    {
-                        beamedDataTagFieldBox->setOrientation(GLMotif::RowColumn::HORIZONTAL);
-                        beamedDataTagFieldBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
-
-                        new GLMotif::Label("beamedDataTagFieldLabel", beamedDataTagFieldBox, "Beamed data tag:");
-
-                        beamedDataTagField = new GLMotif::Label("beamedDataTagFieldLabel", beamedDataTagFieldBox, "");
-
-                        (new GLMotif::Button("changeBeamedDataTagFieldButton", beamedDataTagFieldBox, "Change"))->getSelectCallbacks().add(this, &VncTool::changeBeamedDataTagCallback);
-                    }
-                    beamedDataTagFieldBox->manageChild();
-
-                    new GLMotif::Blind("blind1", infoBox);
-
-                    GLMotif::RowColumn* const messageDisplayBox = new GLMotif::RowColumn("messageDisplayBox", infoBox, false);
-                    {
-                        messageDisplayBox->setOrientation(GLMotif::RowColumn::HORIZONTAL);
-                        messageDisplayBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
-
-                        new GLMotif::Label("messageDisplayLabel", messageDisplayBox, "Status:");
-
-                        messageDisplay = new GLMotif::Label("messageDisplay", messageDisplayBox, "Ready", false);
-                        messageDisplay->setHAlignment(GLFont::Left);
-                        messageDisplay->manageChild();
-                    }
-                    messageDisplayBox->manageChild();
-
-                    autoBeamToggle = new GLMotif::ToggleButton("autoBeamToggle", infoBox, "Auto-beam");
-                    autoBeamToggle->manageChild();
-
-                    lastSelectedDialogDisplay = new GLMotif::Label("lastSelectedDialogDisplay", infoBox, "", false);
-                    lastSelectedDialogDisplay->setHAlignment(GLFont::Left);
-                    lastSelectedDialogDisplay->manageChild();
-
-                    new GLMotif::Blind("blind2", infoBox);
-                }
-                infoBox->manageChild();
-
-                new GLMotif::Blind("blind1", controlsRowCol);
+                new GLMotif::Blind("blind1", hostarea);
             }
-            controlsRowCol->manageChild();
+            hostarea->manageChild();
 
-            vncWidget = new VncWidget(*this, *this, !Vrui::isMaster(), Vrui::openPipe(), true, "VncWidget", topRowCol, false);  // Note: vncWidget is owned by (a descendent of) popupWindow
-            vncWidget->setBorderType(GLMotif::Widget::RAISED);
-            const GLfloat uiSize = vncWidget->getStyleSheet()->size;
-            vncWidget->setDisplaySizeMultipliers(uiSize/10.0, uiSize/10.0);
-            vncWidget->manageChild();
+            GLMotif::RowColumn* const infoBox = new GLMotif::RowColumn("infoBox", controlsRowCol, false);
+            {
+                infoBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+
+                enableClickThroughToggle = new GLMotif::ToggleButton("enableClickThroughToggle", infoBox, "Enable click-through");
+                enableClickThroughToggle->getSelectCallbacks().add(this, &VncTool::enableClickThroughToggleCallback);
+
+                enableBeamDataToggle = new GLMotif::ToggleButton("enableBeamDataToggle", infoBox, "Enable data beaming");
+
+                timestampBeamedDataToggle = new GLMotif::ToggleButton("timestampBeamedDataToggle", infoBox, "Timestamp beamed data");
+
+                GLMotif::RowColumn* const beamedDataTagFieldBox = new GLMotif::RowColumn("beamedDataTagFieldBox", infoBox, false);
+                {
+                    beamedDataTagFieldBox->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+                    beamedDataTagFieldBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+
+                    new GLMotif::Label("beamedDataTagFieldLabel", beamedDataTagFieldBox, "Beamed data tag:");
+
+                    beamedDataTagField = new GLMotif::Label("beamedDataTagFieldLabel", beamedDataTagFieldBox, "");
+
+                    (new GLMotif::Button("changeBeamedDataTagFieldButton", beamedDataTagFieldBox, "Change"))->getSelectCallbacks().add(this, &VncTool::changeBeamedDataTagCallback);
+                }
+                beamedDataTagFieldBox->manageChild();
+
+                new GLMotif::Blind("blind2", infoBox);
+
+                GLMotif::RowColumn* const messageLabelBox = new GLMotif::RowColumn("messageLabelBox", infoBox, false);
+                {
+                    messageLabelBox->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+                    messageLabelBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+
+                    new GLMotif::Label("messageLabelLabel", messageLabelBox, "Status:");
+
+                    messageLabel = new GLMotif::Label("messageLabel", messageLabelBox, "Ready", false);
+                    messageLabel->setHAlignment(GLFont::Left);
+                    messageLabel->manageChild();
+                }
+                messageLabelBox->manageChild();
+
+                autoBeamToggle = new GLMotif::ToggleButton("autoBeamToggle", infoBox, "Auto-beam");
+                autoBeamToggle->manageChild();
+
+                lastSelectedDialogDisplay = new GLMotif::Label("lastSelectedDialogDisplay", infoBox, "", false);
+                lastSelectedDialogDisplay->setHAlignment(GLFont::Left);
+                lastSelectedDialogDisplay->manageChild();
+
+                new GLMotif::Blind("blind2", infoBox);
+            }
+            infoBox->manageChild();
+
+            new GLMotif::Blind("blind3", controlsRowCol);
         }
-        topRowCol->manageChild();
+        controlsRowCol->manageChild();
     }
-
     Vrui::popupPrimaryWidget(popupWindow, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
-//if (Vrui::getNumNodes() == 1) Vrui::getWidgetManager()->setPrimaryWidgetTransformation(popupWindow, Vrui::getWidgetManager()->calcWidgetTransformation(popupWindow).rotate(GLMotif::WidgetManager::Transformation::Rotation(GLMotif::WidgetManager::Transformation::Vector(1, 0, 0), 1.2)));//!!!
-
-    (void)vncWidget->checkForUpdates();
 }
 
 
@@ -1131,24 +1155,16 @@ VncTool::~VncTool()
     for (AnimationList::iterator it = animations.begin(); it != animations.end(); ++it)
         delete *it;
 
-    // Note: vncWidget is owned by (a descendent of) popupWindow
-
     resetConnection();
 
     if (dataEntryKeyboardDialog)
-    {
-        dataEntryKeyboardDialog->getManager()->popdownWidget(dataEntryKeyboardDialog);
-        delete dataEntryKeyboardDialog;
-    }
+        dataEntryKeyboardDialog->getManager()->deleteWidget(dataEntryKeyboardDialog);
 
     if (beamedDataTagInputCompletionCallback)
         delete beamedDataTagInputCompletionCallback;
 
     if (popupWindow)
-    {
-        popupWindow->getManager()->popdownWidget(popupWindow);
-        delete popupWindow;
-    }
+        closePopupWindow(popupWindow);
 }
 
 
@@ -1162,16 +1178,12 @@ const Vrui::ToolFactory* VncTool::getFactory() const
 
 void VncTool::resetConnection()
 {
-    if (vncWidget)
-    {
-        vncWidget->shutdown();
-        vncWidget->attemptSizeUpdate();
-    }
+    if (vncVislet)
+        vncVislet->disable();
 
     if (passwordKeyboardDialog)
     {
-        passwordKeyboardDialog->getManager()->popdownWidget(passwordKeyboardDialog);
-        delete passwordKeyboardDialog;
+        passwordKeyboardDialog->getManager()->deleteWidget(passwordKeyboardDialog);
         passwordKeyboardDialog = 0;
     }
 
@@ -1190,19 +1202,16 @@ void VncTool::resetConnection()
 
 void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cbData)
 {
+    resetConnection();
+
     if (cbData)
     {
-        messageDisplay->setLabel("Ready");
-
         if (!cbData->newSelectedToggle)
         {
-            resetConnection();
             clearHostSelectorButtons();
         }
         else
         {
-            resetConnection();
-
             // Note: We rely on the fact that the host descriptors list in VncToolFactory does not ever change....
             // See also the note in VncToolFactory::VncToolFactory().
             hostDescriptor = &static_cast<const VncToolFactory*>(getFactory())->getHostDescriptors().at(cbData->radioBox->getToggleIndex(cbData->newSelectedToggle));
@@ -1214,8 +1223,7 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
                 timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
                 beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
 
-                if (vncWidget)
-                    vncWidget->startup(*hostDescriptor);
+                initiatePasswordRetrieval();  // will eventually call passwordCompletionCallback
             }
         }
     }
@@ -1225,8 +1233,8 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
 
 void VncTool::enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cbData)
 {
-    if (vncWidget)
-        vncWidget->setEnableClickThrough(enableClickThroughToggle->getToggle());
+    if (vncVislet)
+        vncVislet->setEnableClickThrough(enableClickThroughToggle->getToggle());
 }
 
 
@@ -1245,12 +1253,11 @@ void VncTool::changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData)
         beamedDataTagInputCompletionCallback = 0;
     }
 
-    beamedDataTagInputCompletionCallback = new BeamedDataTagInputCompletionCallback(popupWindow, *beamedDataTagField);
+    beamedDataTagInputCompletionCallback = new BeamedDataTagInputCompletionCallback(this, popupWindow, *beamedDataTagField);
 
     dataEntryKeyboardDialog = new KeyboardDialog("BeamedDataTagInputDialog", Vrui::getWidgetManager(), "Enter New Tag For Beamed Data:");
 
     Vrui::popupPrimaryWidget(dataEntryKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
-//if (Vrui::getNumNodes() == 1) Vrui::getWidgetManager()->setPrimaryWidgetTransformation(dataEntryKeyboardDialog, Vrui::getWidgetManager()->calcWidgetTransformation(dataEntryKeyboardDialog).rotate(GLMotif::WidgetManager::Transformation::Rotation(GLMotif::WidgetManager::Transformation::Vector(1, 0, 0), 1.2)));//!!!
 
     dataEntryKeyboardDialog->activate(*beamedDataTagInputCompletionCallback);
 }
@@ -1272,7 +1279,7 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
             // Activate this tool:
             active = true;
 
-            if (enableBeamDataToggle->getToggle() && hostDescriptor && vncWidget)
+            if (enableBeamDataToggle->getToggle() && hostDescriptor && vncVislet)
             {
                 GLMotif::Widget* const target =
                     (autoBeamToggle->getToggle() && lastSelectedDialog && Vrui::getWidgetManager()->isVisible(lastSelectedDialog))
@@ -1285,9 +1292,9 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
 
                     if (targetRoot)
                     {
-                        GLMotif::Widget* const vncWidgetRoot = vncWidget->getRoot();
+                        GLMotif::Widget* const vncVisletRoot = vncVislet->getRootWidget();
 
-                        if (targetRoot != vncWidgetRoot)  // don't beam from the vncWidget's container to the vncWidget
+                        if (targetRoot != vncVisletRoot)  // don't beam from the vncVislet's container to the vncVislet
                         {
                             const char* const beamedDataTagStringFromField = beamedDataTagField->getLabel();
                             const char* const beamedDataTagString =
@@ -1314,10 +1321,10 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
                             {
                                 const char* const resultCStr = retrievalFunctor.result.c_str();
 
-                                animations.push_back(new DataRetrievalAnimation(vncWidget->getLastClickPoint(), target->getRoot(), vncWidget, resultCStr));
+                                animations.push_back(new DataRetrievalAnimation(vncVislet->getLastClickPoint(), target->getRoot(), vncVislet->getVncWidget(), resultCStr));
 
-                                if (!vncWidget->getRfbIsSameMachine())
-                                    vncWidget->sendStringViaKeyEvents(resultCStr);
+                                if (!vncVislet->getRfbIsSameMachine())
+                                    vncVislet->sendCStringViaKeyEvents(resultCStr);
 
                                 {
                                     UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
@@ -1378,6 +1385,33 @@ GLMotif::Ray VncTool::calcSelectionRay() const
 
 
 
+void VncTool::updateUIState()
+{
+    if (!passwordKeyboardDialog && (!vncVislet || vncVislet->getCloseCompleted()))
+    {
+        clearHostSelectorButtons();
+        if (messageLabel)
+            messageLabel->setLabel("Ready");
+    }
+
+    if (messageLabel)
+    {
+        const char* const message = vncVislet ? vncVislet->getMessageString() : "";
+        messageLabel->setLabel(message ? message : "");
+    }
+
+    for (AnimationList::iterator it = animations.begin(); it != animations.end(); )
+        if (!(*it)->expired())
+            ++it;
+        else
+        {
+            delete *it;
+            it = animations.erase(it);
+        }
+}
+
+
+
 void VncTool::clearHostSelectorButtons() const
 {
     for (GLMotif::Widget* child = hostSelector->getFirstChild(); child; child = hostSelector->getNextChild(child))
@@ -1390,23 +1424,36 @@ void VncTool::clearHostSelectorButtons() const
 
 
 
+void VncTool::initiatePasswordRetrieval()
+{
+    if (passwordKeyboardDialog)
+    {
+        passwordKeyboardDialog->getManager()->deleteWidget(passwordKeyboardDialog);
+        passwordKeyboardDialog = 0;
+    }
+
+    if (passwordCompletionCallback)
+    {
+        delete passwordCompletionCallback;
+        passwordCompletionCallback = 0;
+    }
+
+    passwordCompletionCallback = new PasswordDialogCompletionCallback(this);
+
+    std::string passwordKeyboardDialogTitle = "Enter VNC Password For Host:";
+    passwordKeyboardDialogTitle += hostDescriptor->desktopHost;
+    passwordKeyboardDialog = new KeyboardDialog("PasswordDialog", Vrui::getWidgetManager(), passwordKeyboardDialogTitle.c_str());
+
+    Vrui::popupPrimaryWidget(passwordKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
+
+    passwordKeyboardDialog->activate(*passwordCompletionCallback, true);
+}
+
+
+
 void VncTool::frame()
 {
-    for (AnimationList::iterator it = animations.begin(); it != animations.end(); )
-        if (!(*it)->expired())
-            ++it;
-        else
-        {
-            delete *it;
-            it = animations.erase(it);
-        }
-
-    if (vncWidget)
-    {
-        UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
-
-        (void)vncWidget->checkForUpdates();
-    }
+    updateUIState();
 
     // Update the selection ray:
     selectionRay = calcSelectionRay();
@@ -1445,109 +1492,14 @@ void VncTool::display(GLContextData& contextData) const
 
 
 
-//----------------------------------------------------------------------
-// VncManager::MessageManager methods
-
-void VncTool::internalErrorMessage(const char* where, const char* message)
+template<class PopupWindowClass>
+    void VncTool::closePopupWindow(PopupWindowClass*& var)
 {
-    if (Vrui::isMaster())
-        fprintf(stderr, "*** VncTool: internal error at %s: %s\n", where, message);
-}
-
-
-
-void VncTool::errorMessage(const char* where, const char* message)
-{
-    // When changing the implementation of this method, think
-    // about possible injection attacks from a malicious server.
-    // If any are possible, reimplement errorMessageFromServer()
-    // below to prevent exploitation.
-
-    messageDisplay->setLabel("Connection error");
-    animations.push_back(new ErrorOccurrenceAnimation(*messageDisplay));
-fprintf(stderr, "*** VncTool: %s: %s\n", where, message);//!!!
-}
-
-
-
-void VncTool::errorMessageFromServer(const char* where, const char* message)
-{
-    // Note: a malicious message from the server won't hurt us here, i.e., there
-    // are no known injection attacks for the way we're handling this message....
-
-    this->errorMessage(where, message);
-}
-
-
-
-void VncTool::infoServerInitStarted()
-{
-    messageDisplay->setLabel("Connecting...");
-}
-
-
-
-void VncTool::infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion)
-{
-}
-
-
-
-void VncTool::infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult)
-{
-}
-
-
-
-void VncTool::infoServerInitCompleted(bool succeeded)
-{
-    messageDisplay->setLabel(succeeded ? "Connected" : "Connection failed");
-}
-
-
-
-void VncTool::infoCloseStarted()
-{
-}
-
-
-
-void VncTool::infoCloseCompleted()
-{
-    resetConnection();
-    clearHostSelectorButtons();
-}
-
-
-
-//----------------------------------------------------------------------
-// VncManager::PasswordRetrievalThunk method
-
-void VncTool::getPassword(VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk)
-{
-    if (passwordKeyboardDialog)
+    if (var)
     {
-        passwordKeyboardDialog->getManager()->popdownWidget(passwordKeyboardDialog);
-        delete passwordKeyboardDialog;
-        passwordKeyboardDialog = 0;
+        var->getManager()->deleteWidget(var);
+        var = 0;
     }
-
-    if (passwordCompletionCallback)
-    {
-        delete passwordCompletionCallback;
-        passwordCompletionCallback = 0;
-    }
-
-    passwordCompletionCallback = new PasswordDialogCompletionCallback(passwordRetrievalCompletionThunk);
-
-    std::string passwordKeyboardDialogTitle = "Enter VNC Password For Host:";
-    passwordKeyboardDialogTitle += hostDescriptor->desktopHost;
-    passwordKeyboardDialog = new KeyboardDialog("PasswordDialog", Vrui::getWidgetManager(), passwordKeyboardDialogTitle.c_str());
-
-    Vrui::popupPrimaryWidget(passwordKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
-//if (Vrui::getNumNodes() == 1) Vrui::getWidgetManager()->setPrimaryWidgetTransformation(passwordKeyboardDialog, Vrui::getWidgetManager()->calcWidgetTransformation(passwordKeyboardDialog).rotate(GLMotif::WidgetManager::Transformation::Rotation(GLMotif::WidgetManager::Transformation::Vector(1, 0, 0), 1.2)));//!!!
-
-    passwordKeyboardDialog->activate(*passwordCompletionCallback, true);
 }
 
 }  // end of namespace Voltaic

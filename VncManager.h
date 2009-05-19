@@ -40,6 +40,9 @@ namespace Voltaic {
 
     class VncManager
     {
+    public:
+        static const rfbPixelFormat DefaultRequestedPixelFormat;
+
     //----------------------------------------------------------------------
     public:
         struct RFBProtocolStartupData
@@ -257,8 +260,10 @@ namespace Voltaic {
                     ItemType_InfoCloseCompletedItem
                 };
 
+                const ItemType itemType;
+
             public:
-                Item() {}
+                Item(ItemType itemType) : itemType(itemType) {}
                 virtual ~Item();
 
                 // createFromPipeContainingTypeCode() reads ItemType, then calls appropriate createFromPipe() for that value
@@ -280,7 +285,7 @@ namespace Voltaic {
             class GetPasswordItem : public Item
             {
             public:
-                GetPasswordItem() {}
+                GetPasswordItem() : Item(ItemType_GetPasswordItem) {}
 
                 static GetPasswordItem* createFromPipe(Comm::MulticastPipe& pipe);
 
@@ -297,6 +302,7 @@ namespace Voltaic {
 
             public:
                 InitDisplayItem(const rfbServerInitMsg& si, const char* desktopName) :
+                    Item(ItemType_InitDisplayItem),
                     si(si),
                     desktopName(desktopName)
                 {
@@ -324,6 +330,7 @@ namespace Voltaic {
                            GLsizei                  srcWidth,
                            GLsizei                  srcHeight,
                            Images::RGBImage::Color* srcData ) :
+                    Item(ItemType_WriteItem),
                     destX(destX),
                     destY(destY),
                     srcWidth(srcWidth),
@@ -358,6 +365,7 @@ namespace Voltaic {
                           GLint   srcY,
                           GLsizei srcWidth,
                           GLsizei srcHeight ) :
+                    Item(ItemType_CopyItem),
                     srcX(srcX),
                     srcY(srcY),
                     destX(destX),
@@ -389,6 +397,7 @@ namespace Voltaic {
                           GLsizei                 w,
                           GLsizei                 h,
                           Images::RGBImage::Color color ) :
+                    Item(ItemType_FillItem),
                     x(x),
                     y(y),
                     w(w),
@@ -412,6 +421,7 @@ namespace Voltaic {
 
             public:
                 InternalErrorMessageItem(const char* where, const char* message) :
+                    Item(ItemType_InternalErrorMessageItem),
                     where(where),
                     message(message)
                 {
@@ -432,6 +442,7 @@ namespace Voltaic {
 
             public:
                 ErrorMessageItem(const char* where, const char* message) :
+                    Item(ItemType_ErrorMessageItem),
                     where(where),
                     message(message)
                 {
@@ -452,6 +463,7 @@ namespace Voltaic {
 
             public:
                 ErrorMessageFromServerItem(const char* where, const char* message) :
+                    Item(ItemType_ErrorMessageFromServerItem),
                     where(where),
                     message(message)
                 {
@@ -467,7 +479,7 @@ namespace Voltaic {
             class InfoServerInitStartedItem : public Item
             {
             public:
-                InfoServerInitStartedItem() {}
+                InfoServerInitStartedItem() : Item(ItemType_InfoServerInitStartedItem) {}
 
                 static InfoServerInitStartedItem* createFromPipe(Comm::MulticastPipe& pipe);
 
@@ -486,6 +498,7 @@ namespace Voltaic {
 
             public:
                 InfoProtocolVersionItem(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion) :
+                    Item(ItemType_InfoProtocolVersionItem),
                     serverMajorVersion(serverMajorVersion),
                     serverMinorVersion(serverMinorVersion),
                     clientMajorVersion(clientMajorVersion),
@@ -509,6 +522,7 @@ namespace Voltaic {
 
             public:
                 InfoAuthenticationResultItem(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult) :
+                    Item(ItemType_InfoAuthenticationResultItem),
                     succeeded(succeeded),
                     authScheme(authScheme),
                     authResult(authResult)
@@ -529,6 +543,7 @@ namespace Voltaic {
 
             public:
                 InfoServerInitCompletedItem(bool succeeded) :
+                    Item(ItemType_InfoServerInitCompletedItem),
                     succeeded(succeeded)
                 {
                 }
@@ -543,7 +558,7 @@ namespace Voltaic {
             class InfoCloseStartedItem : public Item
             {
             public:
-                InfoCloseStartedItem() {}
+                InfoCloseStartedItem() : Item(ItemType_InfoCloseStartedItem) {}
 
                 static InfoCloseStartedItem* createFromPipe(Comm::MulticastPipe& pipe);
 
@@ -555,7 +570,7 @@ namespace Voltaic {
             class InfoCloseCompletedItem : public Item
             {
             public:
-                InfoCloseCompletedItem() {}
+                InfoCloseCompletedItem() : Item(ItemType_InfoCloseCompletedItem) {}
 
                 static InfoCloseCompletedItem* createFromPipe(Comm::MulticastPipe& pipe);
 
@@ -815,12 +830,12 @@ namespace Voltaic {
                                              rfbCARD32   enterKeySym       = 0xff0d,
                                              rfbCARD32   leftControlKeySym = 0xffe3 );
 
-        bool sendStringViaKeyEvents( const char* str,
-                                     rfbCARD32   tabKeySym         = 0xff09,
-                                     rfbCARD32   enterKeySym       = 0xff0d,
-                                     rfbCARD32   leftControlKeySym = 0xffe3)
+        bool sendCStringViaKeyEvents( const char* cstr,
+                                      rfbCARD32   tabKeySym         = 0xff09,
+                                      rfbCARD32   enterKeySym       = 0xff0d,
+                                      rfbCARD32   leftControlKeySym = 0xffe3)
         {
-            return !str || sendStringViaKeyEvents(str, (size_t)::strlen(str), tabKeySym, enterKeySym, leftControlKeySym);
+            return !cstr || sendStringViaKeyEvents(cstr, (size_t)::strlen(cstr), tabKeySym, enterKeySym, leftControlKeySym);
         }
 
     public:
