@@ -961,55 +961,6 @@ void ErrorOccurrenceAnimation::showAt(Misc::Time t, GLContextData& contextData) 
 
 //----------------------------------------------------------------------
 
-void VncTool::PasswordDialogCompletionCallback::keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled)
-{
-    std::string retrievedPassword;
-    if (!cancelled)
-        retrievedPassword = keyboardDialog.getBuffer();
-
-    keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
-    if (vncTool->passwordKeyboardDialog == &keyboardDialog)
-        vncTool->passwordKeyboardDialog = 0;
-
-    if (vncTool && retrievedPassword.size() > 0)
-    {
-        Vrui::VisletManager* const visletManager = Vrui::getVisletManager();
-        Vrui::VisletFactory* const visletFactory = visletManager->loadClass("VncVislet");
-
-        char rfbPortStr[20];
-        snprintf(rfbPortStr, sizeof(rfbPortStr), "%d", vncTool->hostDescriptor->rfbPort);
-
-        const char* visletArgv[14];
-        size_t visletArgc = 0;
-        visletArgv[visletArgc++] = "hostname";
-        visletArgv[visletArgc++] = vncTool->hostDescriptor->desktopHost;
-        visletArgv[visletArgc++] = "password";
-        visletArgv[visletArgc++] = retrievedPassword.c_str();
-        visletArgv[visletArgc++] = "initViaConnect";
-        visletArgv[visletArgc++] = vncTool->hostDescriptor->initViaConnect ? "true" : "false";
-        visletArgv[visletArgc++] = "rfbPort";
-        visletArgv[visletArgc++] = rfbPortStr;
-        visletArgv[visletArgc++] = "sharedDesktopFlag";
-        visletArgv[visletArgc++] = vncTool->hostDescriptor->sharedDesktopFlag ? "true" : "false";
-        visletArgv[visletArgc++] = "enableClickThrough";
-        visletArgv[visletArgc++] = vncTool->enableClickThroughToggle->getToggle() ? "true" : "false";
-
-        if (vncTool->hostDescriptor->requestedEncodings)
-        {
-            visletArgv[visletArgc++] = "requestedEncodings";
-            visletArgv[visletArgc++] = vncTool->hostDescriptor->requestedEncodings;
-        }
-
-        vncTool->vncVislet = static_cast<VncVislet*>(visletManager->createVislet(visletFactory, visletArgc, visletArgv));
-    }
-
-    VncManager::eraseStringContents(retrievedPassword);
-}
-
-
-
-//----------------------------------------------------------------------
-
 void VncTool::BeamedDataTagInputCompletionCallback::keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled)
 {
     UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
@@ -1047,9 +998,7 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
     lastSelectedDialog(0),
     messageLabel(0),
     vncVislet(0),
-    passwordCompletionCallback(0),
     beamedDataTagInputCompletionCallback(0),
-    passwordKeyboardDialog(0),
     dataEntryKeyboardDialog(0),
     animations()
 {
@@ -1181,18 +1130,6 @@ void VncTool::resetConnection()
     if (vncVislet)
         vncVislet->disable();
 
-    if (passwordKeyboardDialog)
-    {
-        passwordKeyboardDialog->getManager()->deleteWidget(passwordKeyboardDialog);
-        passwordKeyboardDialog = 0;
-    }
-
-    if (passwordCompletionCallback)
-    {
-        delete passwordCompletionCallback;
-        passwordCompletionCallback = 0;
-    }
-
     enableBeamDataToggle->setToggle(false);
 
     hostDescriptor = 0;
@@ -1217,13 +1154,40 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
             hostDescriptor = &static_cast<const VncToolFactory*>(getFactory())->getHostDescriptors().at(cbData->radioBox->getToggleIndex(cbData->newSelectedToggle));
             if (hostDescriptor)
             {
+                // Reset the controls for a new VncVislet instance:
                 enableBeamDataToggle->setToggle(false);
                 autoBeamToggle->setToggle(hostDescriptor->initialAutoBeam);
                 enableClickThroughToggle->setToggle(hostDescriptor->initialEnableClickThrough);
                 timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
                 beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
 
-                initiatePasswordRetrieval();  // will eventually call passwordCompletionCallback
+                // Start up a new VncVislet instance:
+                Vrui::VisletManager* const visletManager = Vrui::getVisletManager();
+                Vrui::VisletFactory* const visletFactory = visletManager->loadClass("VncVislet");
+
+                char rfbPortStr[20];
+                snprintf(rfbPortStr, sizeof(rfbPortStr), "%d", hostDescriptor->rfbPort);
+
+                const char* visletArgv[12];
+                size_t visletArgc = 0;
+                visletArgv[visletArgc++] = "hostname";
+                visletArgv[visletArgc++] = hostDescriptor->desktopHost;
+                visletArgv[visletArgc++] = "initViaConnect";
+                visletArgv[visletArgc++] = hostDescriptor->initViaConnect ? "true" : "false";
+                visletArgv[visletArgc++] = "rfbPort";
+                visletArgv[visletArgc++] = rfbPortStr;
+                visletArgv[visletArgc++] = "sharedDesktopFlag";
+                visletArgv[visletArgc++] = hostDescriptor->sharedDesktopFlag ? "true" : "false";
+                visletArgv[visletArgc++] = "enableClickThrough";
+                visletArgv[visletArgc++] = enableClickThroughToggle->getToggle() ? "true" : "false";
+
+                if (hostDescriptor->requestedEncodings)
+                {
+                    visletArgv[visletArgc++] = "requestedEncodings";
+                    visletArgv[visletArgc++] = hostDescriptor->requestedEncodings;
+                }
+
+                vncVislet = static_cast<VncVislet*>(visletManager->createVislet(visletFactory, visletArgc, visletArgv));
             }
         }
     }
@@ -1387,7 +1351,7 @@ GLMotif::Ray VncTool::calcSelectionRay() const
 
 void VncTool::updateUIState()
 {
-    if (!passwordKeyboardDialog && (!vncVislet || vncVislet->getCloseCompleted()))
+    if (!vncVislet || vncVislet->getCloseCompleted())
     {
         clearHostSelectorButtons();
         if (messageLabel)
@@ -1420,33 +1384,6 @@ void VncTool::clearHostSelectorButtons() const
         if (toggle)
             toggle->setToggle(false);
     }
-}
-
-
-
-void VncTool::initiatePasswordRetrieval()
-{
-    if (passwordKeyboardDialog)
-    {
-        passwordKeyboardDialog->getManager()->deleteWidget(passwordKeyboardDialog);
-        passwordKeyboardDialog = 0;
-    }
-
-    if (passwordCompletionCallback)
-    {
-        delete passwordCompletionCallback;
-        passwordCompletionCallback = 0;
-    }
-
-    passwordCompletionCallback = new PasswordDialogCompletionCallback(this);
-
-    std::string passwordKeyboardDialogTitle = "Enter VNC Password For Host:";
-    passwordKeyboardDialogTitle += hostDescriptor->desktopHost;
-    passwordKeyboardDialog = new KeyboardDialog("PasswordDialog", Vrui::getWidgetManager(), passwordKeyboardDialogTitle.c_str());
-
-    Vrui::popupPrimaryWidget(passwordKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
-
-    passwordKeyboardDialog->activate(*passwordCompletionCallback, true);
 }
 
 

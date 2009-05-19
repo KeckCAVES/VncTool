@@ -168,23 +168,6 @@ namespace Voltaic {
         typedef std::list<Animation*> AnimationList;
 
     public:
-        friend class PasswordDialogCompletionCallback;
-        class PasswordDialogCompletionCallback : public KeyboardDialog::CompletionCallback
-        {
-        public:
-            PasswordDialogCompletionCallback(VncTool* vncTool) :
-                vncTool(vncTool)
-            {
-            }
-
-        public:
-            virtual void keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled);
-
-        protected:
-            VncTool* const vncTool;
-        };
-
-    public:
         friend class BeamedDataTagInputCompletionCallback;
         class BeamedDataTagInputCompletionCallback : public KeyboardDialog::CompletionCallback
         {
@@ -221,7 +204,6 @@ namespace Voltaic {
         virtual GLMotif::Ray calcSelectionRay() const;  // calculates the selection ray based on current device position/orientation
         virtual void updateUIState();
         virtual void clearHostSelectorButtons() const;
-        virtual void initiatePasswordRetrieval();
 
     public:
         virtual void frame();
@@ -250,9 +232,7 @@ namespace Voltaic {
         GLMotif::Widget*                      lastSelectedDialog;
         GLMotif::Label*                       messageLabel;
         VncVislet*                            vncVislet;
-        PasswordDialogCompletionCallback*     passwordCompletionCallback;
         BeamedDataTagInputCompletionCallback* beamedDataTagInputCompletionCallback;
-        KeyboardDialog*                       passwordKeyboardDialog;
         KeyboardDialog*                       dataEntryKeyboardDialog;
         AnimationList                         animations;
 

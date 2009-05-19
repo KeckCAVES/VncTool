@@ -147,6 +147,30 @@ extern "C" void destroyVncVisletFactory(Vrui::VisletFactory* factory)
 
 //----------------------------------------------------------------------
 
+void VncVislet::PasswordDialogCompletionCallback::keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled)
+{
+    std::string retrievedPassword;
+    if (!cancelled)
+        retrievedPassword = keyboardDialog.getBuffer();
+
+    keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
+    if (vncVislet->passwordKeyboardDialog == &keyboardDialog)
+        vncVislet->passwordKeyboardDialog = 0;
+
+    if (vncVislet && retrievedPassword.size() > 0)
+    {
+        // Must be performed last before returning:
+        passwordRetrievalCompletionThunk.postPassword(retrievedPassword.c_str());
+    }
+
+    // The following is OK to do before returning...
+    VncManager::eraseStringContents(retrievedPassword);
+}
+
+
+
+//----------------------------------------------------------------------
+
 VncVisletFactory* VncVislet::factory = 0;  // static member
 
 
@@ -159,12 +183,15 @@ VncVislet::VncVislet(int numArguments, const char* const arguments[]) :
     closeCompleted(false),
     initViaConnect(true),
     hostname(),
-    password(),
     rfbPort(0),
     requestedEncodings(),
     sharedDesktopFlag(false),
     enableClickThrough(true),
+    initializedWithPassword(false),
+    password(),
     popupWindow(0),
+    passwordCompletionCallback(0),
+    passwordKeyboardDialog(0),
     vncWidget(0),
     closeButton(0),
     messageLabel(0)
@@ -314,8 +341,25 @@ void VncVislet::infoCloseCompleted()
 
 void VncVislet::getPassword(VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk)
 {
-    // Must be performed last before returning:
-    passwordRetrievalCompletionThunk.postPassword(password.c_str());
+    if (initializedWithPassword)
+    {
+        // Must be performed last before returning:
+        passwordRetrievalCompletionThunk.postPassword(password.c_str());
+    }
+    else
+    {
+        clearPasswordDialog();
+
+        passwordCompletionCallback = new PasswordDialogCompletionCallback(this, passwordRetrievalCompletionThunk);
+
+        std::string passwordKeyboardDialogTitle = "Enter VNC Password For Host:";
+        passwordKeyboardDialogTitle += hostname;
+        passwordKeyboardDialog = new KeyboardDialog("PasswordDialog", Vrui::getWidgetManager(), passwordKeyboardDialogTitle.c_str());
+
+        Vrui::popupPrimaryWidget(passwordKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
+
+        passwordKeyboardDialog->activate(*passwordCompletionCallback, true);  // passwordCompletionCallback will perform passwordRetrievalCompletionThunk.postPassword()
+    }
 }
 
 
@@ -382,8 +426,6 @@ void VncVislet::parseArguments(int numArguments, const char* const arguments[])
         const char* val = 0;
         if ((val = check_arg("hostname", arg)) != 0)
             hostname = (*val || argpos >= numArguments) ? val : arguments[argpos++];
-        else if ((val = check_arg("password", arg)) != 0)
-            password = (*val || argpos >= numArguments) ? val : arguments[argpos++];
         else if ((val = check_arg("initViaConnect", arg)) != 0)
             initViaConnect = parse_bool((*val || argpos >= numArguments) ? val : arguments[argpos++]);
         else if ((val = check_arg("rfbPort", arg)) != 0)
@@ -394,6 +436,11 @@ void VncVislet::parseArguments(int numArguments, const char* const arguments[])
             sharedDesktopFlag = parse_bool((*val || argpos >= numArguments) ? val : arguments[argpos++]);
         else if ((val = check_arg("enableClickThrough", arg)) != 0)
             enableClickThrough = parse_bool((*val || argpos >= numArguments) ? val : arguments[argpos++]);
+        else if ((val = check_arg("password", arg)) != 0)
+        {
+            initializedWithPassword = true;
+            password = (*val || argpos >= numArguments) ? val : arguments[argpos++];
+        }
         else
             break;
     }
@@ -493,6 +540,19 @@ void VncVislet::updateUIState()
 
 
 
+void VncVislet::clearPasswordDialog()
+{
+    closePopupWindow(passwordKeyboardDialog);
+
+    if (passwordCompletionCallback)
+    {
+        delete passwordCompletionCallback;
+        passwordCompletionCallback = 0;
+    }
+}
+
+
+
 void VncVislet::resetConnection()
 {
     if (vncWidget)
@@ -501,6 +561,8 @@ void VncVislet::resetConnection()
         vncWidget = 0;
         // Note: vncWidget is owned by (a descendent of) popupWindow
     }
+
+    clearPasswordDialog();
 }
 
 }  // end of namespace Voltaic

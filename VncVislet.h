@@ -35,6 +35,7 @@
 #include <Vrui/VisletManager.h>
 
 #include "VncWidget.h"
+#include "KeyboardDialog.h"
 
 
 
@@ -68,6 +69,26 @@ namespace Voltaic {
         public VncManager::PasswordRetrievalThunk
     {
     friend class VncVisletFactory;
+
+    protected:
+        friend class PasswordDialogCompletionCallback;
+        class PasswordDialogCompletionCallback : public KeyboardDialog::CompletionCallback
+        {
+        public:
+            PasswordDialogCompletionCallback( VncVislet*                                    vncVislet,
+                                              VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk ) :
+                vncVislet(vncVislet),
+                passwordRetrievalCompletionThunk(passwordRetrievalCompletionThunk)
+            {
+            }
+
+        public:
+            virtual void keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled);
+
+        protected:
+            VncVislet* const                              vncVislet;
+            VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk;
+        };
 
     public:
         VncVislet(int numArguments, const char* const arguments[]);
@@ -163,21 +184,25 @@ namespace Voltaic {
             void closePopupWindow(PopupWindowClass*& var);
         virtual void closeAllPopupWindows();
         virtual void updateUIState();
+        virtual void clearPasswordDialog();
         virtual void resetConnection();
 
     protected:
-        bool                  closeCompleted;
-        bool                  initViaConnect;
-        std::string           hostname;
-        std::string           password;
-        unsigned              rfbPort;
-        std::string           requestedEncodings;
-        bool                  sharedDesktopFlag;
-        bool                  enableClickThrough;
-        GLMotif::PopupWindow* popupWindow;
-        VncWidget*            vncWidget;
-        GLMotif::Button*      closeButton;
-        GLMotif::Label*       messageLabel;
+        bool                              closeCompleted;
+        bool                              initViaConnect;
+        std::string                       hostname;
+        unsigned                          rfbPort;
+        std::string                       requestedEncodings;
+        bool                              sharedDesktopFlag;
+        bool                              enableClickThrough;
+        bool                              initializedWithPassword;
+        std::string                       password;  // the password from the initialization arguments if initializedWithPassword is true
+        GLMotif::PopupWindow*             popupWindow;
+        PasswordDialogCompletionCallback* passwordCompletionCallback;
+        KeyboardDialog*                   passwordKeyboardDialog;
+        VncWidget*                        vncWidget;
+        GLMotif::Button*                  closeButton;
+        GLMotif::Label*                   messageLabel;
 
     private:
         // Disable these copiers:
