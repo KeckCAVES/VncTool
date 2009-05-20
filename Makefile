@@ -97,12 +97,12 @@ plugin-o/%.o: librfb/%.cpp
 # Pattern rule to link executables:
 %: o/%.o
 	@echo Linking $@...
-	g++ -o $@ $^ $(VRUI_LINKFLAGS)
+	g++ -o $@ $^ $(VRUI_LINKFLAGS) -lz
 
 # Pattern rule to link plugins:
 lib%.$(VRUI_PLUGINFILEEXT): plugin-o/%.o
 	@echo Linking $@...
-	g++ -o $@ $^ $(VRUI_LINKFLAGS) $(VRUI_PLUGINLINKFLAGS)
+	g++ -o $@ $^ $(VRUI_LINKFLAGS) $(VRUI_PLUGINLINKFLAGS) -lz
 
 
 # List all executable build rules:

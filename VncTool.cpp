@@ -54,7 +54,7 @@ namespace Voltaic {
 class UpperLeftCornerPreserver
 {
 public:
-    UpperLeftCornerPreserver(GLMotif::PopupWindow* popupWindow) :
+    UpperLeftCornerPreserver(GLMotif::PopupWindow*& popupWindow) :
         popupWindow(popupWindow)
     {
         if (popupWindow)
@@ -87,8 +87,8 @@ public:
     }
 
 private:
-    GLMotif::PopupWindow* const popupWindow;
-    GLMotif::Point              priorUpperLeft;
+    GLMotif::PopupWindow*& popupWindow;
+    GLMotif::Point         priorUpperLeft;
 };
 
 
@@ -968,6 +968,7 @@ void VncTool::BeamedDataTagInputCompletionCallback::keyboardDialogDidComplete(Ke
     if (!cancelled)
         fieldToUpdate.setLabel(keyboardDialog.getBuffer().c_str());
 
+    keyboardDialog.getManager()->popdownWidget(&keyboardDialog);
     keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
     if (vncTool->dataEntryKeyboardDialog == &keyboardDialog)
         vncTool->dataEntryKeyboardDialog = 0;
@@ -1006,14 +1007,19 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
 
     popupWindow = new GLMotif::PopupWindow("VncTool", Vrui::getWidgetManager(), "Vnc Tool");
     {
-        GLMotif::RowColumn* const controlsRowCol = new GLMotif::RowColumn("controlsRowCol", popupWindow, false);
-        {
-            controlsRowCol->setOrientation(GLMotif::RowColumn::HORIZONTAL);
-            controlsRowCol->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+        GLMotif::PopupWindow* const parent = popupWindow;
 
-            GLMotif::RowColumn* const hostarea = new GLMotif::RowColumn("hostarea", controlsRowCol, false);
+        GLMotif::RowColumn* const controlsRowCol = new GLMotif::RowColumn("controlsRowCol", parent, false);
+        {
+            GLMotif::RowColumn* const parent = controlsRowCol;
+            parent->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+            parent->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+
+            GLMotif::RowColumn* const hostarea = new GLMotif::RowColumn("hostarea", parent, false);
             {
-                hostSelector = new GLMotif::RadioBox("Hosts", hostarea, false);
+                GLMotif::RowColumn* const parent = hostarea;
+
+                hostSelector = new GLMotif::RadioBox("Hosts", parent, false);
                 {
                     hostSelector->setBorderWidth(hostSelector->getStyleSheet()->textfieldBorderWidth);
                     hostSelector->setBorderType(GLMotif::Widget::LOWERED);
@@ -1036,61 +1042,64 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
                 }
                 hostSelector->manageChild();
 
-                new GLMotif::Blind("blind1", hostarea);
+                new GLMotif::Blind("blind1", parent);
             }
             hostarea->manageChild();
 
-            GLMotif::RowColumn* const infoBox = new GLMotif::RowColumn("infoBox", controlsRowCol, false);
+            GLMotif::RowColumn* const infoBox = new GLMotif::RowColumn("infoBox", parent, false);
             {
-                infoBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+                GLMotif::RowColumn* const parent = infoBox;
+                parent->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 
-                enableClickThroughToggle = new GLMotif::ToggleButton("enableClickThroughToggle", infoBox, "Enable click-through");
+                enableClickThroughToggle = new GLMotif::ToggleButton("enableClickThroughToggle", parent, "Enable click-through");
                 enableClickThroughToggle->getSelectCallbacks().add(this, &VncTool::enableClickThroughToggleCallback);
 
-                enableBeamDataToggle = new GLMotif::ToggleButton("enableBeamDataToggle", infoBox, "Enable data beaming");
+                enableBeamDataToggle = new GLMotif::ToggleButton("enableBeamDataToggle", parent, "Enable data beaming");
 
-                timestampBeamedDataToggle = new GLMotif::ToggleButton("timestampBeamedDataToggle", infoBox, "Timestamp beamed data");
+                timestampBeamedDataToggle = new GLMotif::ToggleButton("timestampBeamedDataToggle", parent, "Timestamp beamed data");
 
-                GLMotif::RowColumn* const beamedDataTagFieldBox = new GLMotif::RowColumn("beamedDataTagFieldBox", infoBox, false);
+                GLMotif::RowColumn* const beamedDataTagFieldBox = new GLMotif::RowColumn("beamedDataTagFieldBox", parent, false);
                 {
-                    beamedDataTagFieldBox->setOrientation(GLMotif::RowColumn::HORIZONTAL);
-                    beamedDataTagFieldBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+                    GLMotif::RowColumn* const parent = beamedDataTagFieldBox;
+                    parent->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+                    parent->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 
-                    new GLMotif::Label("beamedDataTagFieldLabel", beamedDataTagFieldBox, "Beamed data tag:");
+                    new GLMotif::Label("beamedDataTagFieldLabel", parent, "Beamed data tag:");
 
-                    beamedDataTagField = new GLMotif::Label("beamedDataTagFieldLabel", beamedDataTagFieldBox, "");
+                    beamedDataTagField = new GLMotif::Label("beamedDataTagFieldLabel", parent, "");
 
-                    (new GLMotif::Button("changeBeamedDataTagFieldButton", beamedDataTagFieldBox, "Change"))->getSelectCallbacks().add(this, &VncTool::changeBeamedDataTagCallback);
+                    (new GLMotif::Button("changeBeamedDataTagFieldButton", parent, "Change"))->getSelectCallbacks().add(this, &VncTool::changeBeamedDataTagCallback);
                 }
                 beamedDataTagFieldBox->manageChild();
 
-                new GLMotif::Blind("blind2", infoBox);
+                new GLMotif::Blind("blind2", parent);
 
-                GLMotif::RowColumn* const messageLabelBox = new GLMotif::RowColumn("messageLabelBox", infoBox, false);
+                GLMotif::RowColumn* const messageLabelBox = new GLMotif::RowColumn("messageLabelBox", parent, false);
                 {
-                    messageLabelBox->setOrientation(GLMotif::RowColumn::HORIZONTAL);
-                    messageLabelBox->setPacking(GLMotif::RowColumn::PACK_TIGHT);
+                    GLMotif::RowColumn* const parent = messageLabelBox;
+                    parent->setOrientation(GLMotif::RowColumn::HORIZONTAL);
+                    parent->setPacking(GLMotif::RowColumn::PACK_TIGHT);
 
-                    new GLMotif::Label("messageLabelLabel", messageLabelBox, "Status:");
+                    new GLMotif::Label("messageLabelLabel", parent, "Status:");
 
-                    messageLabel = new GLMotif::Label("messageLabel", messageLabelBox, "Ready", false);
+                    messageLabel = new GLMotif::Label("messageLabel", parent, "Ready", false);
                     messageLabel->setHAlignment(GLFont::Left);
                     messageLabel->manageChild();
                 }
                 messageLabelBox->manageChild();
 
-                autoBeamToggle = new GLMotif::ToggleButton("autoBeamToggle", infoBox, "Auto-beam");
+                autoBeamToggle = new GLMotif::ToggleButton("autoBeamToggle", parent, "Auto-beam");
                 autoBeamToggle->manageChild();
 
-                lastSelectedDialogDisplay = new GLMotif::Label("lastSelectedDialogDisplay", infoBox, "", false);
+                lastSelectedDialogDisplay = new GLMotif::Label("lastSelectedDialogDisplay", parent, "", false);
                 lastSelectedDialogDisplay->setHAlignment(GLFont::Left);
                 lastSelectedDialogDisplay->manageChild();
 
-                new GLMotif::Blind("blind2", infoBox);
+                new GLMotif::Blind("blind2", parent);
             }
             infoBox->manageChild();
 
-            new GLMotif::Blind("blind3", controlsRowCol);
+            new GLMotif::Blind("blind3", parent);
         }
         controlsRowCol->manageChild();
     }
@@ -1104,16 +1113,29 @@ VncTool::~VncTool()
     for (AnimationList::iterator it = animations.begin(); it != animations.end(); ++it)
         delete *it;
 
-    resetConnection();
+    animations.clear();
 
-    if (dataEntryKeyboardDialog)
-        dataEntryKeyboardDialog->getManager()->deleteWidget(dataEntryKeyboardDialog);
+    resetConnection();
+    vncVislet = 0;
+
+    closePopupWindow(dataEntryKeyboardDialog);
 
     if (beamedDataTagInputCompletionCallback)
+    {
         delete beamedDataTagInputCompletionCallback;
+        beamedDataTagInputCompletionCallback = 0;
+    }
 
-    if (popupWindow)
-        closePopupWindow(popupWindow);
+    hostSelector              = 0;
+    enableClickThroughToggle  = 0;
+    enableBeamDataToggle      = 0;
+    timestampBeamedDataToggle = 0;
+    autoBeamToggle            = 0;
+    beamedDataTagField        = 0;
+    lastSelectedDialogDisplay = 0;
+    lastSelectedDialog        = 0;
+    messageLabel              = 0;
+    closePopupWindow(popupWindow);
 }
 
 
@@ -1130,7 +1152,8 @@ void VncTool::resetConnection()
     if (vncVislet)
         vncVislet->disable();
 
-    enableBeamDataToggle->setToggle(false);
+    if (enableBeamDataToggle)
+        enableBeamDataToggle->setToggle(false);
 
     hostDescriptor = 0;
 }
@@ -1155,11 +1178,11 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
             if (hostDescriptor)
             {
                 // Reset the controls for a new VncVislet instance:
-                enableBeamDataToggle->setToggle(false);
-                autoBeamToggle->setToggle(hostDescriptor->initialAutoBeam);
-                enableClickThroughToggle->setToggle(hostDescriptor->initialEnableClickThrough);
-                timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
-                beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
+                if (enableBeamDataToggle)      enableBeamDataToggle->setToggle(false);
+                if (autoBeamToggle)            autoBeamToggle->setToggle(hostDescriptor->initialAutoBeam);
+                if (enableClickThroughToggle)  enableClickThroughToggle->setToggle(hostDescriptor->initialEnableClickThrough);
+                if (timestampBeamedDataToggle) timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
+                if (beamedDataTagField)        beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
 
                 // Start up a new VncVislet instance:
                 Vrui::VisletManager* const visletManager = Vrui::getVisletManager();
@@ -1179,7 +1202,7 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
                 visletArgv[visletArgc++] = "sharedDesktopFlag";
                 visletArgv[visletArgc++] = hostDescriptor->sharedDesktopFlag ? "true" : "false";
                 visletArgv[visletArgc++] = "enableClickThrough";
-                visletArgv[visletArgc++] = enableClickThroughToggle->getToggle() ? "true" : "false";
+                visletArgv[visletArgc++] = (enableClickThroughToggle && enableClickThroughToggle->getToggle()) ? "true" : "false";
 
                 if (hostDescriptor->requestedEncodings)
                 {
@@ -1197,7 +1220,7 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
 
 void VncTool::enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cbData)
 {
-    if (vncVislet)
+    if (vncVislet && enableClickThroughToggle)
         vncVislet->setEnableClickThrough(enableClickThroughToggle->getToggle());
 }
 
@@ -1205,11 +1228,7 @@ void VncTool::enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cb
 
 void VncTool::changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData)
 {
-    if (dataEntryKeyboardDialog)
-    {
-        delete dataEntryKeyboardDialog;
-        dataEntryKeyboardDialog = 0;
-    }
+    closePopupWindow(dataEntryKeyboardDialog);
 
     if (beamedDataTagInputCompletionCallback)
     {
@@ -1217,13 +1236,16 @@ void VncTool::changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData)
         beamedDataTagInputCompletionCallback = 0;
     }
 
-    beamedDataTagInputCompletionCallback = new BeamedDataTagInputCompletionCallback(this, popupWindow, *beamedDataTagField);
+    if (beamedDataTagField)
+    {
+        beamedDataTagInputCompletionCallback = new BeamedDataTagInputCompletionCallback(this, popupWindow, *beamedDataTagField);
 
-    dataEntryKeyboardDialog = new KeyboardDialog("BeamedDataTagInputDialog", Vrui::getWidgetManager(), "Enter New Tag For Beamed Data:");
+        dataEntryKeyboardDialog = new KeyboardDialog("BeamedDataTagInputDialog", Vrui::getWidgetManager(), "Enter New Tag For Beamed Data:");
 
-    Vrui::popupPrimaryWidget(dataEntryKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
+        Vrui::popupPrimaryWidget(dataEntryKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
 
-    dataEntryKeyboardDialog->activate(*beamedDataTagInputCompletionCallback);
+        dataEntryKeyboardDialog->activate(*beamedDataTagInputCompletionCallback);
+    }
 }
 
 
@@ -1243,10 +1265,10 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
             // Activate this tool:
             active = true;
 
-            if (enableBeamDataToggle->getToggle() && hostDescriptor && vncVislet)
+            if (enableBeamDataToggle && enableBeamDataToggle->getToggle() && hostDescriptor && vncVislet)
             {
                 GLMotif::Widget* const target =
-                    (autoBeamToggle->getToggle() && lastSelectedDialog && Vrui::getWidgetManager()->isVisible(lastSelectedDialog))
+                    (autoBeamToggle && autoBeamToggle->getToggle() && lastSelectedDialog && Vrui::getWidgetManager()->isVisible(lastSelectedDialog))
                         ? lastSelectedDialog
                         : event.getTargetWidget();
 
@@ -1260,7 +1282,7 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
 
                         if (targetRoot != vncVisletRoot)  // don't beam from the vncVislet's container to the vncVislet
                         {
-                            const char* const beamedDataTagStringFromField = beamedDataTagField->getLabel();
+                            const char* const beamedDataTagStringFromField = beamedDataTagField ? beamedDataTagField->getLabel() : 0;
                             const char* const beamedDataTagString =
                                 (beamedDataTagStringFromField && (strlen(beamedDataTagStringFromField) > 0))
                                     ? beamedDataTagStringFromField
@@ -1274,7 +1296,7 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
                             WidgetDataRetrievalFunctor retrievalFunctor( hostDescriptor->beginDataString.c_str(),
                                                                          hostDescriptor->interDatumString.c_str(),
                                                                          hostDescriptor->endDataString.c_str(),
-                                                                         (timestampBeamedDataToggle->getToggle() ? "%Y-%m-%d %H:%M:%S" : 0),
+                                                                         ((timestampBeamedDataToggle && timestampBeamedDataToggle->getToggle()) ? "%Y-%m-%d %H:%M:%S" : 0),
                                                                          beamedDataTagString,
                                                                          targetTitle );
 
@@ -1300,7 +1322,8 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
                                     std::string lastSelectedDialogTitle = "Last selected dialog: ";
                                     lastSelectedDialogTitle += targetTitle;
 
-                                    lastSelectedDialogDisplay->setLabel(lastSelectedDialogTitle.c_str());
+                                    if (lastSelectedDialogDisplay)
+                                        lastSelectedDialogDisplay->setLabel(lastSelectedDialogTitle.c_str());
                                 }
                             }
                         }
@@ -1378,12 +1401,13 @@ void VncTool::updateUIState()
 
 void VncTool::clearHostSelectorButtons() const
 {
-    for (GLMotif::Widget* child = hostSelector->getFirstChild(); child; child = hostSelector->getNextChild(child))
-    {
-        GLMotif::ToggleButton* const toggle = dynamic_cast<GLMotif::ToggleButton*>(child);
-        if (toggle)
-            toggle->setToggle(false);
-    }
+    if (hostSelector)
+        for (GLMotif::Widget* child = hostSelector->getFirstChild(); child; child = hostSelector->getNextChild(child))
+        {
+            GLMotif::ToggleButton* const toggle = dynamic_cast<GLMotif::ToggleButton*>(child);
+            if (toggle)
+                toggle->setToggle(false);
+        }
 }
 
 
@@ -1434,6 +1458,7 @@ template<class PopupWindowClass>
 {
     if (var)
     {
+        var->getManager()->popdownWidget(var);
         var->getManager()->deleteWidget(var);
         var = 0;
     }

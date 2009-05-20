@@ -153,6 +153,7 @@ void VncVislet::PasswordDialogCompletionCallback::keyboardDialogDidComplete(Keyb
     if (!cancelled)
         retrievedPassword = keyboardDialog.getBuffer();
 
+    keyboardDialog.getManager()->popdownWidget(&keyboardDialog);
     keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
     if (vncVislet->passwordKeyboardDialog == &keyboardDialog)
         vncVislet->passwordKeyboardDialog = 0;
@@ -277,7 +278,6 @@ void VncVislet::errorMessage(const char* where, const char* message)
     // below to prevent exploitation.
 
     messageLabel->setLabel("Connection error");
-fprintf(stderr, "** VncVislet: %s: %s\n", where, message);//!!!
 }
 
 
@@ -453,6 +453,7 @@ template<class PopupWindowClass>
 {
     if (var)
     {
+        var->getManager()->popdownWidget(var);
         var->getManager()->deleteWidget(var);
         var = 0;
     }

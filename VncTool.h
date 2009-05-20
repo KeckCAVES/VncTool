@@ -172,9 +172,9 @@ namespace Voltaic {
         class BeamedDataTagInputCompletionCallback : public KeyboardDialog::CompletionCallback
         {
         public:
-            BeamedDataTagInputCompletionCallback( VncTool*              vncTool,
-                                                  GLMotif::PopupWindow* popupWindow,
-                                                  GLMotif::Label&       fieldToUpdate ) :
+            BeamedDataTagInputCompletionCallback( VncTool*               vncTool,
+                                                  GLMotif::PopupWindow*& popupWindow,
+                                                  GLMotif::Label&        fieldToUpdate ) :
                 vncTool(vncTool),
                 popupWindow(popupWindow),
                 fieldToUpdate(fieldToUpdate)
@@ -185,9 +185,9 @@ namespace Voltaic {
             virtual void keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled);
 
         protected:
-            VncTool* const        vncTool;
-            GLMotif::PopupWindow* popupWindow;
-            GLMotif::Label&       fieldToUpdate;
+            VncTool* const         vncTool;
+            GLMotif::PopupWindow*& popupWindow;
+            GLMotif::Label&        fieldToUpdate;
         };
 
     public:
