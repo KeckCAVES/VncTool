@@ -34,8 +34,7 @@
 #include <Vrui/Vislet.h>
 #include <Vrui/VisletManager.h>
 
-#include "VncWidget.h"
-#include "KeyboardDialog.h"
+#include "VncDialog.h"
 
 
 
@@ -64,9 +63,7 @@ namespace Voltaic {
     //----------------------------------------------------------------------
     class VncVislet :
         public Vrui::Vislet,
-        public GLObject,
-        public VncManager::MessageManager,
-        public VncManager::PasswordRetrievalThunk
+        public GLObject
     {
     friend class VncVisletFactory;
 
@@ -94,115 +91,33 @@ namespace Voltaic {
         VncVislet(int numArguments, const char* const arguments[]);
         virtual ~VncVislet();
 
-    protected:
-        virtual Vrui::VisletFactory* getFactory() const;
-
     public:
+        // Vrui::Vislet methods:
+        virtual Vrui::VisletFactory* getFactory() const;
         virtual void disable();
         virtual void enable();
         virtual void initContext(GLContextData& contextData) const;
         virtual void frame();
         virtual void display(GLContextData& contextData) const;
 
-    public:
-        // VncManager::MessageManager methods:
-        virtual void internalErrorMessage(const char* where, const char* message);
-        virtual void errorMessage(const char* where, const char* message);
-        virtual void errorMessageFromServer(const char* where, const char* message);
-        virtual void infoServerInitStarted();
-        virtual void infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion);
-        virtual void infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult);
-        virtual void infoServerInitCompleted(bool succeeded);
-        virtual void infoCloseStarted();
-        virtual void infoCloseCompleted();
-
-    public:
-        // VncManager::PasswordRetrievalThunk method:
-        virtual void getPassword(VncManager::PasswordRetrievalCompletionThunk& passwordRetrievalCompletionThunk);
-
-    public:
-        VncWidget*       getVncWidget()  const { return vncWidget; }
-        GLMotif::Widget* getRootWidget() const { return !vncWidget ? 0 : vncWidget->getRoot(); }
-
-        GLsizei getRemoteDisplayWidth()  const { return !vncWidget ? 0 : vncWidget->getRemoteDisplayWidth();  }
-        GLsizei getRemoteDisplayHeight() const { return !vncWidget ? 0 : vncWidget->getRemoteDisplayHeight(); }
-
-        bool sendKeyEvent(rfbCARD32 key, bool down)         { return !vncWidget ? false : vncWidget->sendKeyEvent(key, down); }
-        bool sendPointerEvent(int x, int y, int buttonMask) { return !vncWidget ? false : vncWidget->sendPointerEvent(x, y, buttonMask); }
-        bool sendClientCutText(const char* str, size_t len) { return !vncWidget ? false : vncWidget->sendClientCutText(str, len); }
-
-        bool sendStringViaKeyEvents( const char* str,
-                                     size_t      len,
-                                     rfbCARD32   tabKeySym         = 0xff09,
-                                     rfbCARD32   enterKeySym       = 0xff0d,
-                                     rfbCARD32   leftControlKeySym = 0xffe3 )
-        {
-            return (vncWidget != 0) && vncWidget->sendStringViaKeyEvents(str, len, tabKeySym, enterKeySym, leftControlKeySym);
-        }
-
-        bool sendCStringViaKeyEvents( const char* cstr,
-                                      rfbCARD32   tabKeySym         = 0xff09,
-                                      rfbCARD32   enterKeySym       = 0xff0d,
-                                      rfbCARD32   leftControlKeySym = 0xffe3 )
-        {
-            return (vncWidget != 0) && vncWidget->sendCStringViaKeyEvents(cstr, tabKeySym, enterKeySym, leftControlKeySym);
-        }
-
-        bool                      getRfbIsOpen()             const { return !vncWidget ? false                        : vncWidget->getRfbIsOpen(); }
-        bool                      getRfbIsSameMachine()      const { return !vncWidget ? false                        : vncWidget->getRfbIsSameMachine(); }
-        const char*               getRfbDesktopHost()        const { return !vncWidget ? 0                            : vncWidget->getRfbDesktopHost(); }  // 0 if connected by listening
-        const struct sockaddr_in* getRfbDesktopIPAddress()   const { return !vncWidget ? (const struct sockaddr_in*)0 : vncWidget->getRfbDesktopIPAddress(); }
-        unsigned                  getRfbPort()               const { return !vncWidget ? 0                            : vncWidget->getRfbPort(); }
-        unsigned                  getRfbPortOffset()         const { return !vncWidget ? 0                            : vncWidget->getRfbPortOffset(); }
-        unsigned                  getRfbTcpPort()            const { return !vncWidget ? 0                            : vncWidget->getRfbTcpPort(); }
-        const rfbPixelFormat*     getRfbPixelFormat()        const { return !vncWidget ? (const rfbPixelFormat*)0     : vncWidget->getRfbPixelFormat(); }
-        bool                      getRfbShouldMapColor()     const { return !vncWidget ? false                        : vncWidget->getRfbShouldMapColor(); }
-        const char*               getRfbRequestedEncodings() const { return !vncWidget ? 0                            : vncWidget->getRfbRequestedEncodings(); }
-        const char*               getRfbDesktopName()        const { return !vncWidget ? 0                            : vncWidget->getRfbDesktopName(); }
-
-        bool                      getRfbSockConnected()      const { return !vncWidget ? false                        : vncWidget->getRfbSockConnected(); }
-        const rfbServerInitMsg*   getRfbServerInitMsg()      const { return !vncWidget ? (const rfbServerInitMsg*)0   : vncWidget->getRfbServerInitMsg(); }
-        rfbCARD8                  getRfbCurrentEncoding()    const { return !vncWidget ? (rfbCARD8)rfbEncodingRaw     : vncWidget->getRfbCurrentEncoding(); }
-        bool                      getRfbIsBigEndian()        const { return !vncWidget ? false                        : vncWidget->getRfbIsBigEndian(); }
-
-        const GLMotif::Point&     getLastClickPoint()        const { return !vncWidget ? GLMotif::Point::origin       : vncWidget->getLastClickPoint(); }
-
-        bool getEnableClickThrough() const     { return !vncWidget ? false : vncWidget->getEnableClickThrough(); }
-        void setEnableClickThrough(bool value) { if (vncWidget) vncWidget->setEnableClickThrough(value); }
-
-        const char* getMessageString() const { return messageLabel ? messageLabel->getLabel() : ""; }
-
-        bool getCloseCompleted() const { return closeCompleted; }
+    protected:
+        void parseArguments(int numArguments, const char* const arguments[]);
+        template<class PopupWindowClass>
+            void closePopupWindow(PopupWindowClass*& var);
 
     private:
         static VncVisletFactory* factory;  // pointer to the factory object for this class
 
     protected:
-        virtual void closeButtonCallback(GLMotif::Button::CallbackData* cbData);
-        void parseArguments(int numArguments, const char* const arguments[]);
-        template<class PopupWindowClass>
-            void closePopupWindow(PopupWindowClass*& var);
-        virtual void closeAllPopupWindows();
-        virtual void updateUIState();
-        virtual void clearPasswordDialog();
-        virtual void resetConnection();
-
-    protected:
-        bool                              closeCompleted;
-        bool                              initViaConnect;
-        std::string                       hostname;
-        unsigned                          rfbPort;
-        std::string                       requestedEncodings;
-        bool                              sharedDesktopFlag;
-        bool                              enableClickThrough;
-        bool                              initializedWithPassword;
-        std::string                       password;  // the password from the initialization arguments if initializedWithPassword is true
-        GLMotif::PopupWindow*             popupWindow;
-        PasswordDialogCompletionCallback* passwordCompletionCallback;
-        KeyboardDialog*                   passwordKeyboardDialog;
-        VncWidget*                        vncWidget;
-        GLMotif::Button*                  closeButton;
-        GLMotif::Label*                   messageLabel;
+        bool        initViaConnect;
+        std::string hostname;
+        unsigned    rfbPort;
+        std::string requestedEncodings;
+        bool        sharedDesktopFlag;
+        bool        enableClickThrough;
+        bool        initializedWithPassword;
+        std::string password;  // the password from the initialization arguments if initializedWithPassword is true
+        VncDialog*  vncDialog;
 
     private:
         // Disable these copiers:

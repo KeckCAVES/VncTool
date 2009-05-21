@@ -38,7 +38,7 @@
 #include <Vrui/Tools/Tool.h>
 #include <Vrui/Tools/UtilityTool.h>
 
-#include "VncVislet.h"
+#include "VncDialog.h"
 #include "KeyboardDialog.h"
 
 
@@ -58,11 +58,13 @@ namespace Voltaic {
 
             HostDescriptor( Misc::ConfigurationFileSection& cfs,
                             const char*                     configFileSection,
-                            const char*                     hostName );
+                            const char*                     hostName = 0 );  // hostName == 0 ==> initialize with blank hostName but initialized from configuration file defaults
 
             HostDescriptor(const HostDescriptor& other);
 
             HostDescriptor& operator=(const HostDescriptor& other);
+
+            void setDesktopHost(const char* hostName);
 
         public:
             std::string beginDataString;
@@ -87,9 +89,11 @@ namespace Voltaic {
         virtual Vrui::Tool* createTool(const Vrui::ToolInputAssignment& inputAssignment) const;
         virtual void        destroyTool(Vrui::Tool* tool) const;
 
-        const HostDescriptorList& getHostDescriptors() const { return hostDescriptors; }
+        const HostDescriptorList& getHostDescriptors()     const { return hostDescriptors; }
+        const HostDescriptor&     getBlankHostDescriptor() const { return blankHostDescriptor; }
 
     protected:
+        HostDescriptor     blankHostDescriptor;  // blank hostName but initialized from configuration file defaults
         HostDescriptorList hostDescriptors;
 
     private:
@@ -168,6 +172,25 @@ namespace Voltaic {
         typedef std::list<Animation*> AnimationList;
 
     public:
+        friend class ManualHostnameEntryCompletionCallback;
+        class ManualHostnameEntryCompletionCallback : public KeyboardDialog::CompletionCallback
+        {
+        public:
+            ManualHostnameEntryCompletionCallback( VncTool*               vncTool,
+                                                   GLMotif::PopupWindow*& popupWindow ) :
+                vncTool(vncTool),
+                popupWindow(popupWindow)
+            {
+            }
+
+        public:
+            virtual void keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled);
+
+        protected:
+            VncTool* const         vncTool;
+            GLMotif::PopupWindow*& popupWindow;
+        };
+
         friend class BeamedDataTagInputCompletionCallback;
         class BeamedDataTagInputCompletionCallback : public KeyboardDialog::CompletionCallback
         {
@@ -194,10 +217,13 @@ namespace Voltaic {
         VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignment& inputAssignment);
         virtual ~VncTool();
 
-    protected:
+    public:
         virtual const Vrui::ToolFactory* getFactory() const;
+
+    protected:
         virtual void resetConnection();
         virtual void changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cbData);
+        virtual void startVncDialogWithHostDescriptor(const VncToolFactory::HostDescriptor* newHostDescriptor);
         virtual void enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cbData);
         virtual void changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData);
         virtual void buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice::ButtonCallbackData* cbData);
@@ -217,24 +243,26 @@ namespace Voltaic {
         static VncToolFactory* factory;  // pointer to the factory object for this class
 
     protected:
-        bool                                  insideWidget;                      // flag if the tool is currently able to interact with a widget
-        bool                                  active;                            // flag if the tool is currently active
-        GLMotif::Ray                          selectionRay;                      // current selection ray
-        const VncToolFactory::HostDescriptor* hostDescriptor;                    // currently selected HostDescriptor, or 0 if none
-        GLMotif::PopupWindow*                 popupWindow;
-        GLMotif::RadioBox*                    hostSelector;
-        GLMotif::ToggleButton*                enableClickThroughToggle;          // controls whether the user can click through to the remote terminal
-        GLMotif::ToggleButton*                enableBeamDataToggle;              // controls whether the tool's "beam data" feature is enabled
-        GLMotif::ToggleButton*                timestampBeamedDataToggle;         // controls whether beamed data is timestamped
-        GLMotif::ToggleButton*                autoBeamToggle;                    // controls whether beamed data is timestamped
-        GLMotif::Label*                       beamedDataTagField;                // sets extra "tag" field for beamed data
-        GLMotif::Label*                       lastSelectedDialogDisplay;
-        GLMotif::Widget*                      lastSelectedDialog;
-        GLMotif::Label*                       messageLabel;
-        VncVislet*                            vncVislet;
-        BeamedDataTagInputCompletionCallback* beamedDataTagInputCompletionCallback;
-        KeyboardDialog*                       dataEntryKeyboardDialog;
-        AnimationList                         animations;
+        bool                                   insideWidget;                      // flag if the tool is currently able to interact with a widget
+        bool                                   active;                            // flag if the tool is currently active
+        GLMotif::Ray                           selectionRay;                      // current selection ray
+        const VncToolFactory::HostDescriptor*  hostDescriptor;                    // currently selected HostDescriptor, or 0 if none
+        VncToolFactory::HostDescriptor         hostDescriptorForManualEntry;
+        GLMotif::PopupWindow*                  popupWindow;
+        GLMotif::RadioBox*                     hostSelector;
+        GLMotif::ToggleButton*                 enableClickThroughToggle;          // controls whether the user can click through to the remote terminal
+        GLMotif::ToggleButton*                 enableBeamDataToggle;              // controls whether the tool's "beam data" feature is enabled
+        GLMotif::ToggleButton*                 timestampBeamedDataToggle;         // controls whether beamed data is timestamped
+        GLMotif::ToggleButton*                 autoBeamToggle;                    // controls whether beamed data is timestamped
+        GLMotif::Label*                        beamedDataTagField;                // sets extra "tag" field for beamed data
+        GLMotif::Label*                        lastSelectedDialogDisplay;
+        GLMotif::Widget*                       lastSelectedDialog;
+        GLMotif::Label*                        messageLabel;
+        VncDialog*                             vncDialog;
+        ManualHostnameEntryCompletionCallback* manualHostnameEntryCompletionCallback;
+        BeamedDataTagInputCompletionCallback*  beamedDataTagInputCompletionCallback;
+        KeyboardDialog*                        dataEntryKeyboardDialog;
+        AnimationList                          animations;
 
     private:
         // Disable these copiers:

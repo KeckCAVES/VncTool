@@ -105,7 +105,7 @@ lib%.$(VRUI_PLUGINFILEEXT): plugin-o/%.o
 	g++ -o $@ $^ $(VRUI_LINKFLAGS) $(VRUI_PLUGINLINKFLAGS) -lz
 
 
-# List all executable build rules:
+# List all executable dependencies:
 o/d3des.o: librfb/d3des.c librfb/d3des.h
 
 o/rfbproto.o: librfb/rfbproto.cpp librfb/corre.cppinc librfb/hextile.cppinc librfb/rre.cppinc librfb/zrle.cppinc librfb/rfbproto.h librfb/d3des.h
@@ -123,7 +123,7 @@ vruivnc: o/vruivnc.o o/VncManager.o o/rfbproto.o o/d3des.o
 TestVncWidget: o/TestVncWidget.o o/VncWidget.o o/VncManager.o o/rfbproto.o o/d3des.o
 
 
-# List all plugin build rules:
+# List all plugin dependencies:
 plugin-o/d3des.o: librfb/d3des.c librfb/d3des.h
 
 plugin-o/rfbproto.o: librfb/rfbproto.cpp librfb/corre.cppinc librfb/hextile.cppinc librfb/rre.cppinc librfb/zrle.cppinc librfb/rfbproto.h librfb/d3des.h
@@ -132,12 +132,14 @@ plugin-o/VncManager.o: VncManager.cpp VncManager.h librfb/rfbproto.h
 
 plugin-o/VncWidget.o: VncWidget.cpp VncWidget.h VncManager.h librfb/rfbproto.h
 
+plugin-o/VncDialog.o: VncDialog.cpp VncDialog.h VncWidget.h VncManager.h librfb/rfbproto.h
+
 plugin-o/KeyboardDialog.o: KeyboardDialog.cpp KeyboardDialog.h
 
 plugin-o/VncVislet.o: VncVislet.cpp VncVislet.h VncWidget.h VncManager.h librfb/rfbproto.h KeyboardDialog.h
 
-plugin-o/VncTool.o: VncTool.cpp VncTool.h VncWidget.h VncManager.h librfb/rfbproto.h KeyboardDialog.h
+plugin-o/VncTool.o: VncTool.cpp VncTool.h VncDialog.h VncWidget.h VncManager.h librfb/rfbproto.h KeyboardDialog.h
 
-libVncVislet.$(VRUI_PLUGINFILEEXT): plugin-o/VncVislet.o plugin-o/KeyboardDialog.o plugin-o/VncWidget.o plugin-o/VncManager.o plugin-o/rfbproto.o plugin-o/d3des.o
+libVncVislet.$(VRUI_PLUGINFILEEXT): plugin-o/VncVislet.o plugin-o/KeyboardDialog.o plugin-o/VncDialog.o plugin-o/VncWidget.o plugin-o/VncManager.o plugin-o/rfbproto.o plugin-o/d3des.o
 
-libVncTool.$(VRUI_PLUGINFILEEXT): plugin-o/VncTool.o plugin-o/KeyboardDialog.o plugin-o/VncWidget.o plugin-o/VncManager.o plugin-o/rfbproto.o plugin-o/d3des.o
+libVncTool.$(VRUI_PLUGINFILEEXT): plugin-o/VncTool.o plugin-o/KeyboardDialog.o plugin-o/VncDialog.o plugin-o/VncWidget.o plugin-o/VncManager.o plugin-o/rfbproto.o plugin-o/d3des.o

@@ -30,9 +30,7 @@
 #include <GL/GLMaterial.h>
 #include <GL/GLPolylineTube.h>
 #include <GLMotif/Widget.h>
-#include <GLMotif/WidgetManager.h>
 #include <GLMotif/WidgetAlgorithms.h>
-#include <GLMotif/WidgetManager.h>
 #include <GLMotif/RowColumn.h>
 #include <GLMotif/Blind.h>
 #include <GLMotif/ToggleButton.h>
@@ -40,7 +38,6 @@
 #include <GLMotif/TitleBar.h>
 #include <GLMotif/StyleSheet.h>
 #include <Vrui/ToolManager.h>
-#include <Vrui/VisletManager.h>
 #include <Vrui/Vrui.h>
 
 #include "VncTool.h"
@@ -316,7 +313,7 @@ VncToolFactory::HostDescriptor::HostDescriptor( Misc::ConfigurationFileSection& 
                                                 const char*                     configFileSection,
                                                 const char*                     hostName ) :
     VncManager::RFBProtocolStartupData(),
-    desktopHostString(hostName),
+    desktopHostString(hostName ? hostName : ""),
     requestedEncodingsString(),
     beginDataString(),
     interDatumString(),
@@ -326,42 +323,47 @@ VncToolFactory::HostDescriptor::HostDescriptor( Misc::ConfigurationFileSection& 
     initialBeamedDataTag(),
     initialAutoBeam(false)
 {
-    if (!hostName || strchr(hostName, '/'))
+    if (hostName && strchr(hostName, '/'))
         Misc::throwStdErr("Illegal hostname format \"%s\"", (hostName ? hostName : ""));
 
-    std::string prefix = configFileSection ? configFileSection : ".";
-    prefix += "/hostDescription_";
-    prefix += hostName;
-    prefix += '/';
+    beginDataString            = cfs.retrieveValue<std::string>( "beginDataString",            ""    );
+    interDatumString           = cfs.retrieveValue<std::string>( "interDatumString",           "\t"  );
+    endDataString              = cfs.retrieveValue<std::string>( "endDataString",              "\n"  );
+    initialEnableClickThrough  = cfs.retrieveValue<bool>(        "initialEnableClickThrough",  true  );
+    initialTimestampBeamedData = cfs.retrieveValue<bool>(        "initialTimestampBeamedData", true  );
+    initialBeamedDataTag       = cfs.retrieveValue<std::string>( "initialBeamedDataTag",       ""    );
+    initialAutoBeam            = cfs.retrieveValue<bool>(        "initialAutoBeam",            false );
 
-    const std::string default_beginDataString            = cfs.retrieveValue<std::string>( "beginDataString",            "" );
-    const std::string default_interDatumString           = cfs.retrieveValue<std::string>( "interDatumString",           "\t" );
-    const std::string default_endDataString              = cfs.retrieveValue<std::string>( "endDataString",              "\n" );
-    const bool        default_initialEnableClickThrough  = cfs.retrieveValue<bool>(        "initialEnableClickThrough",  true );
-    const bool        default_initialTimestampBeamedData = cfs.retrieveValue<bool>(        "initialTimestampBeamedData", true );
-    const std::string default_initialBeamedDataTag       = cfs.retrieveValue<std::string>( "initialBeamedDataTag",       "" );
-    const bool        default_initialAutoBeam            = cfs.retrieveValue<bool>(        "initialAutoBeam",            false );
-    const bool        default_initViaConnect             = cfs.retrieveValue<bool>(        "initViaConnect",             true );
-    const unsigned    default_rfbPort                    = cfs.retrieveValue<unsigned>(    "rfbPort",                    0 );
-    const std::string default_requestedEncodingsString   = cfs.retrieveValue<std::string>( "requestedEncodings",         "" );
-    const bool        default_sharedDesktopFlag          = cfs.retrieveValue<bool>(        "sharedDesktopFlag",          true );
+    requestedEncodingsString   = cfs.retrieveValue<std::string>( "requestedEncodings",         ""    );
 
-    beginDataString            = cfs.retrieveValue<std::string>( ( prefix+"beginDataString"            ).c_str(), default_beginDataString );
-    interDatumString           = cfs.retrieveValue<std::string>( ( prefix+"interDatumString"           ).c_str(), default_interDatumString );
-    endDataString              = cfs.retrieveValue<std::string>( ( prefix+"endDataString"              ).c_str(), default_endDataString );
-    initialEnableClickThrough  = cfs.retrieveValue<bool>(        ( prefix+"initialEnableClickThrough"  ).c_str(), default_initialEnableClickThrough );
-    initialTimestampBeamedData = cfs.retrieveValue<bool>(        ( prefix+"initialTimestampBeamedData" ).c_str(), default_initialTimestampBeamedData );
-    initialBeamedDataTag       = cfs.retrieveValue<std::string>( ( prefix+"initialBeamedDataTag"       ).c_str(), default_initialBeamedDataTag );
-    initialAutoBeam            = cfs.retrieveValue<bool>(        ( prefix+"initialAutoBeam"            ).c_str(), default_initialAutoBeam );
-    requestedEncodingsString   = cfs.retrieveValue<std::string>( ( prefix+"requestedEncodings"         ).c_str(), default_requestedEncodingsString );
+    this->RFBProtocolStartupData::initViaConnect    = cfs.retrieveValue<bool>(     "initViaConnect",    true  );
+    this->RFBProtocolStartupData::rfbPort           = cfs.retrieveValue<unsigned>( "rfbPort",           0     );
+    this->RFBProtocolStartupData::sharedDesktopFlag = cfs.retrieveValue<bool>(     "sharedDesktopFlag", true  );
 
-    this->RFBProtocolStartupData::initViaConnect     = cfs.retrieveValue<bool>(     ( prefix+"initViaConnect"    ).c_str(), default_initViaConnect);
+    if (hostName)
+    {
+        std::string prefix = configFileSection ? configFileSection : ".";
+        prefix += "/hostDescription_";
+        prefix += hostName;
+        prefix += '/';
+
+        beginDataString            = cfs.retrieveValue<std::string>( ( prefix+"beginDataString"            ).c_str(), beginDataString );
+        interDatumString           = cfs.retrieveValue<std::string>( ( prefix+"interDatumString"           ).c_str(), interDatumString );
+        endDataString              = cfs.retrieveValue<std::string>( ( prefix+"endDataString"              ).c_str(), endDataString );
+        initialEnableClickThrough  = cfs.retrieveValue<bool>(        ( prefix+"initialEnableClickThrough"  ).c_str(), initialEnableClickThrough );
+        initialTimestampBeamedData = cfs.retrieveValue<bool>(        ( prefix+"initialTimestampBeamedData" ).c_str(), initialTimestampBeamedData );
+        initialBeamedDataTag       = cfs.retrieveValue<std::string>( ( prefix+"initialBeamedDataTag"       ).c_str(), initialBeamedDataTag );
+        initialAutoBeam            = cfs.retrieveValue<bool>(        ( prefix+"initialAutoBeam"            ).c_str(), initialAutoBeam );
+
+        requestedEncodingsString   = cfs.retrieveValue<std::string>( ( prefix+"requestedEncodings"         ).c_str(), requestedEncodingsString );
+
+        this->RFBProtocolStartupData::initViaConnect    = cfs.retrieveValue<bool>(     ( prefix+"initViaConnect"    ).c_str(), this->RFBProtocolStartupData::initViaConnect);
+        this->RFBProtocolStartupData::rfbPort           = cfs.retrieveValue<unsigned>( ( prefix+"rfbPort"           ).c_str(), this->RFBProtocolStartupData::rfbPort);
+        this->RFBProtocolStartupData::sharedDesktopFlag = cfs.retrieveValue<bool>(     ( prefix+"sharedDesktopFlag" ).c_str(), this->RFBProtocolStartupData::sharedDesktopFlag);
+    }
+
     this->RFBProtocolStartupData::desktopHost        = this->desktopHostString.c_str();
-    this->RFBProtocolStartupData::rfbPort            = cfs.retrieveValue<unsigned>( ( prefix+"rfbPort"           ).c_str(), default_rfbPort);
     this->RFBProtocolStartupData::requestedEncodings = this->requestedEncodingsString.c_str();
-    this->RFBProtocolStartupData::sharedDesktopFlag  = cfs.retrieveValue<bool>(     ( prefix+"sharedDesktopFlag" ).c_str(), default_sharedDesktopFlag);
-
-
     if (this->RFBProtocolStartupData::requestedEncodings && !*this->RFBProtocolStartupData::requestedEncodings)
         this->RFBProtocolStartupData::requestedEncodings = 0;
 
@@ -428,10 +430,19 @@ VncToolFactory::HostDescriptor::HostDescriptor& VncToolFactory::HostDescriptor::
 
 
 
+void VncToolFactory::HostDescriptor::setDesktopHost(const char* hostName)
+{
+    this->desktopHostString = hostName;
+    this->RFBProtocolStartupData::desktopHost = this->desktopHostString.c_str();
+}
+
+
+
 //----------------------------------------------------------------------
 
 VncToolFactory::VncToolFactory(Vrui::ToolManager& toolManager) :
     ToolFactory("VncTool", toolManager),
+    blankHostDescriptor(),
     hostDescriptors()
 {
     // Initialize tool layout:
@@ -449,6 +460,8 @@ VncToolFactory::VncToolFactory(Vrui::ToolManager& toolManager) :
     Misc::ConfigurationFileSection cfs = toolManager.getToolClassSection(getClassName());
 
     typedef std::vector<std::string> StringList;
+
+    blankHostDescriptor = HostDescriptor(cfs, 0);
 
     // Note: VncTool relies on the fact that the hostDescriptors list never changes
     // once initialized.  If this assumption should change in the future, then perhaps
@@ -976,6 +989,34 @@ void VncTool::BeamedDataTagInputCompletionCallback::keyboardDialogDidComplete(Ke
 
 
 
+void VncTool::ManualHostnameEntryCompletionCallback::keyboardDialogDidComplete(KeyboardDialog& keyboardDialog, bool cancelled)
+{
+    UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
+
+    if (!cancelled)
+    {
+        const char* const hostName = keyboardDialog.getBuffer().c_str();
+        vncTool->hostDescriptorForManualEntry.setDesktopHost(hostName);
+
+        if (vncTool->hostSelector && vncTool->hostSelector->getFirstChild())
+        {
+            GLMotif::ToggleButton* const toggle = dynamic_cast<GLMotif::ToggleButton*>(vncTool->hostSelector->getFirstChild());
+            toggle->setLabel(hostName);
+        }
+
+    }
+
+    keyboardDialog.getManager()->popdownWidget(&keyboardDialog);
+    keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
+    if (vncTool->dataEntryKeyboardDialog == &keyboardDialog)
+        vncTool->dataEntryKeyboardDialog = 0;
+
+    if (!cancelled)
+        vncTool->startVncDialogWithHostDescriptor(&vncTool->hostDescriptorForManualEntry);
+}
+
+
+
 //----------------------------------------------------------------------
 
 VncToolFactory* VncTool::factory = 0;  // static member
@@ -988,6 +1029,7 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
     active(false),
     selectionRay(),
     hostDescriptor(0),
+    hostDescriptorForManualEntry(static_cast<const VncToolFactory*>(factory)->getBlankHostDescriptor()),
     popupWindow(0),
     hostSelector(0),
     enableClickThroughToggle(0),
@@ -998,7 +1040,8 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
     lastSelectedDialogDisplay(0),
     lastSelectedDialog(0),
     messageLabel(0),
-    vncVislet(0),
+    vncDialog(0),
+    manualHostnameEntryCompletionCallback(0),
     beamedDataTagInputCompletionCallback(0),
     dataEntryKeyboardDialog(0),
     animations()
@@ -1025,6 +1068,7 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
                     hostSelector->setBorderType(GLMotif::Widget::LOWERED);
                     hostSelector->setPacking(GLMotif::RowColumn::PACK_GRID);
 
+                    hostSelector->addToggle("");  // for blankHostDescriptor
                     const VncToolFactory::HostDescriptorList& hostDescriptors = VncTool::factory->getHostDescriptors();
                     for (VncToolFactory::HostDescriptorList::const_iterator it = hostDescriptors.begin(); it != hostDescriptors.end(); ++it)
                         hostSelector->addToggle(it->desktopHost);
@@ -1037,6 +1081,7 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
                             toggle->setHAlignment(GLFont::Left);
                     }
 
+                    clearHostSelectorButtons();  // sets standard text for zero-th (manual entry) toggle
 
                     hostSelector->getValueChangedCallbacks().add(this, &VncTool::changeHostCallback);
                 }
@@ -1110,21 +1155,10 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
 
 VncTool::~VncTool()
 {
+fprintf(stderr, "~VncTool ENTER\n");//!!!
     for (AnimationList::iterator it = animations.begin(); it != animations.end(); ++it)
         delete *it;
-
     animations.clear();
-
-    resetConnection();
-    vncVislet = 0;
-
-    closePopupWindow(dataEntryKeyboardDialog);
-
-    if (beamedDataTagInputCompletionCallback)
-    {
-        delete beamedDataTagInputCompletionCallback;
-        beamedDataTagInputCompletionCallback = 0;
-    }
 
     hostSelector              = 0;
     enableClickThroughToggle  = 0;
@@ -1136,6 +1170,23 @@ VncTool::~VncTool()
     lastSelectedDialog        = 0;
     messageLabel              = 0;
     closePopupWindow(popupWindow);
+
+    closePopupWindow(dataEntryKeyboardDialog);
+
+    if (manualHostnameEntryCompletionCallback)
+    {
+        delete manualHostnameEntryCompletionCallback;
+        manualHostnameEntryCompletionCallback = 0;
+    }
+
+    if (beamedDataTagInputCompletionCallback)
+    {
+        delete beamedDataTagInputCompletionCallback;
+        beamedDataTagInputCompletionCallback = 0;
+    }
+
+    resetConnection();
+fprintf(stderr, "~VncTool EXIT\n");//!!!
 }
 
 
@@ -1149,8 +1200,7 @@ const Vrui::ToolFactory* VncTool::getFactory() const
 
 void VncTool::resetConnection()
 {
-    if (vncVislet)
-        vncVislet->disable();
+    closePopupWindow(vncDialog);
 
     if (enableBeamDataToggle)
         enableBeamDataToggle->setToggle(false);
@@ -1162,55 +1212,38 @@ void VncTool::resetConnection()
 
 void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cbData)
 {
-    resetConnection();
-
     if (cbData)
     {
         if (!cbData->newSelectedToggle)
         {
+            resetConnection();
             clearHostSelectorButtons();
         }
         else
         {
             // Note: We rely on the fact that the host descriptors list in VncToolFactory does not ever change....
             // See also the note in VncToolFactory::VncToolFactory().
-            hostDescriptor = &static_cast<const VncToolFactory*>(getFactory())->getHostDescriptors().at(cbData->radioBox->getToggleIndex(cbData->newSelectedToggle));
-            if (hostDescriptor)
+            const int toggleIndex = cbData->radioBox->getToggleIndex(cbData->newSelectedToggle);
+            if (toggleIndex > 0)
+                startVncDialogWithHostDescriptor(&static_cast<const VncToolFactory*>(getFactory())->getHostDescriptors().at(toggleIndex-1));
+            else
             {
-                // Reset the controls for a new VncVislet instance:
-                if (enableBeamDataToggle)      enableBeamDataToggle->setToggle(false);
-                if (autoBeamToggle)            autoBeamToggle->setToggle(hostDescriptor->initialAutoBeam);
-                if (enableClickThroughToggle)  enableClickThroughToggle->setToggle(hostDescriptor->initialEnableClickThrough);
-                if (timestampBeamedDataToggle) timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
-                if (beamedDataTagField)        beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
+                // The zero-th (manual entry) selection
 
-                // Start up a new VncVislet instance:
-                Vrui::VisletManager* const visletManager = Vrui::getVisletManager();
-                Vrui::VisletFactory* const visletFactory = visletManager->loadClass("VncVislet");
+                resetConnection();
 
-                char rfbPortStr[20];
-                snprintf(rfbPortStr, sizeof(rfbPortStr), "%d", hostDescriptor->rfbPort);
-
-                const char* visletArgv[12];
-                size_t visletArgc = 0;
-                visletArgv[visletArgc++] = "hostname";
-                visletArgv[visletArgc++] = hostDescriptor->desktopHost;
-                visletArgv[visletArgc++] = "initViaConnect";
-                visletArgv[visletArgc++] = hostDescriptor->initViaConnect ? "true" : "false";
-                visletArgv[visletArgc++] = "rfbPort";
-                visletArgv[visletArgc++] = rfbPortStr;
-                visletArgv[visletArgc++] = "sharedDesktopFlag";
-                visletArgv[visletArgc++] = hostDescriptor->sharedDesktopFlag ? "true" : "false";
-                visletArgv[visletArgc++] = "enableClickThrough";
-                visletArgv[visletArgc++] = (enableClickThroughToggle && enableClickThroughToggle->getToggle()) ? "true" : "false";
-
-                if (hostDescriptor->requestedEncodings)
+                closePopupWindow(dataEntryKeyboardDialog);
+                if (manualHostnameEntryCompletionCallback)
                 {
-                    visletArgv[visletArgc++] = "requestedEncodings";
-                    visletArgv[visletArgc++] = hostDescriptor->requestedEncodings;
+                    delete manualHostnameEntryCompletionCallback;
+                    manualHostnameEntryCompletionCallback = 0;
                 }
 
-                vncVislet = static_cast<VncVislet*>(visletManager->createVislet(visletFactory, visletArgc, visletArgv));
+                manualHostnameEntryCompletionCallback = new ManualHostnameEntryCompletionCallback(this, popupWindow);
+                dataEntryKeyboardDialog               = new KeyboardDialog("ManualEntryHostnameInputDialog", Vrui::getWidgetManager(), "Enter hostname:");
+                Vrui::popupPrimaryWidget(dataEntryKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
+
+                dataEntryKeyboardDialog->activate(*manualHostnameEntryCompletionCallback);
             }
         }
     }
@@ -1218,10 +1251,39 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
 
 
 
+void VncTool::startVncDialogWithHostDescriptor(const VncToolFactory::HostDescriptor* newHostDescriptor)
+{
+    resetConnection();
+
+    hostDescriptor = newHostDescriptor;
+    if (hostDescriptor)
+    {
+        // Reset the controls for a new VncDialog instance:
+        if (enableBeamDataToggle)      enableBeamDataToggle->setToggle(false);
+        if (autoBeamToggle)            autoBeamToggle->setToggle(hostDescriptor->initialAutoBeam);
+        if (enableClickThroughToggle)  enableClickThroughToggle->setToggle(hostDescriptor->initialEnableClickThrough);
+        if (timestampBeamedDataToggle) timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
+        if (beamedDataTagField)        beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
+
+        // Start up a new VncDialog instance:
+        vncDialog = new VncDialog( "VncDialog",
+                                   Vrui::getWidgetManager(),
+                                   hostDescriptor->desktopHost,
+                                   0 /* no password specified */,
+                                   hostDescriptor->rfbPort,
+                                   hostDescriptor->initViaConnect,
+                                   hostDescriptor->requestedEncodings,
+                                   hostDescriptor->sharedDesktopFlag,
+                                   (enableClickThroughToggle && enableClickThroughToggle->getToggle()) );
+    }
+}
+
+
+
 void VncTool::enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cbData)
 {
-    if (vncVislet && enableClickThroughToggle)
-        vncVislet->setEnableClickThrough(enableClickThroughToggle->getToggle());
+    if (vncDialog && enableClickThroughToggle)
+        vncDialog->setEnableClickThrough(enableClickThroughToggle->getToggle());
 }
 
 
@@ -1229,7 +1291,6 @@ void VncTool::enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cb
 void VncTool::changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData)
 {
     closePopupWindow(dataEntryKeyboardDialog);
-
     if (beamedDataTagInputCompletionCallback)
     {
         delete beamedDataTagInputCompletionCallback;
@@ -1239,9 +1300,7 @@ void VncTool::changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData)
     if (beamedDataTagField)
     {
         beamedDataTagInputCompletionCallback = new BeamedDataTagInputCompletionCallback(this, popupWindow, *beamedDataTagField);
-
-        dataEntryKeyboardDialog = new KeyboardDialog("BeamedDataTagInputDialog", Vrui::getWidgetManager(), "Enter New Tag For Beamed Data:");
-
+        dataEntryKeyboardDialog              = new KeyboardDialog("BeamedDataTagInputDialog", Vrui::getWidgetManager(), "Enter New Tag For Beamed Data:");
         Vrui::popupPrimaryWidget(dataEntryKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
 
         dataEntryKeyboardDialog->activate(*beamedDataTagInputCompletionCallback);
@@ -1265,7 +1324,7 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
             // Activate this tool:
             active = true;
 
-            if (enableBeamDataToggle && enableBeamDataToggle->getToggle() && hostDescriptor && vncVislet)
+            if (enableBeamDataToggle && enableBeamDataToggle->getToggle() && hostDescriptor && vncDialog)
             {
                 GLMotif::Widget* const target =
                     (autoBeamToggle && autoBeamToggle->getToggle() && lastSelectedDialog && Vrui::getWidgetManager()->isVisible(lastSelectedDialog))
@@ -1278,9 +1337,9 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
 
                     if (targetRoot)
                     {
-                        GLMotif::Widget* const vncVisletRoot = vncVislet->getRootWidget();
+                        GLMotif::Widget* const vncDialogRoot = vncDialog->getRootWidget();
 
-                        if (targetRoot != vncVisletRoot)  // don't beam from the vncVislet's container to the vncVislet
+                        if (targetRoot != vncDialogRoot)  // don't beam from the vncDialog's container to the vncDialog
                         {
                             const char* const beamedDataTagStringFromField = beamedDataTagField ? beamedDataTagField->getLabel() : 0;
                             const char* const beamedDataTagString =
@@ -1307,10 +1366,10 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
                             {
                                 const char* const resultCStr = retrievalFunctor.result.c_str();
 
-                                animations.push_back(new DataRetrievalAnimation(vncVislet->getLastClickPoint(), target->getRoot(), vncVislet->getVncWidget(), resultCStr));
+                                animations.push_back(new DataRetrievalAnimation(vncDialog->getLastClickPoint(), target->getRoot(), vncDialog->getVncWidget(), resultCStr));
 
-                                if (!vncVislet->getRfbIsSameMachine())
-                                    vncVislet->sendCStringViaKeyEvents(resultCStr);
+                                if (!vncDialog->getRfbIsSameMachine())
+                                    vncDialog->sendCStringViaKeyEvents(resultCStr);
 
                                 {
                                     UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
@@ -1374,7 +1433,10 @@ GLMotif::Ray VncTool::calcSelectionRay() const
 
 void VncTool::updateUIState()
 {
-    if (!vncVislet || vncVislet->getCloseCompleted())
+    if (vncDialog)
+        vncDialog->checkForUpdates();
+
+    if (!vncDialog || vncDialog->getServerCloseCompleted())
     {
         clearHostSelectorButtons();
         if (messageLabel)
@@ -1383,7 +1445,7 @@ void VncTool::updateUIState()
 
     if (messageLabel)
     {
-        const char* const message = vncVislet ? vncVislet->getMessageString() : "";
+        const char* const message = vncDialog ? vncDialog->getMessageString() : "";
         messageLabel->setLabel(message ? message : "");
     }
 
@@ -1406,7 +1468,12 @@ void VncTool::clearHostSelectorButtons() const
         {
             GLMotif::ToggleButton* const toggle = dynamic_cast<GLMotif::ToggleButton*>(child);
             if (toggle)
+            {
+                if (child == hostSelector->getFirstChild())
+                    toggle->setLabel("(Manual Entry)");
+
                 toggle->setToggle(false);
+            }
         }
 }
 
