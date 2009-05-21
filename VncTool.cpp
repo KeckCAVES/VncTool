@@ -1155,7 +1155,6 @@ VncTool::VncTool(const Vrui::ToolFactory* factory, const Vrui::ToolInputAssignme
 
 VncTool::~VncTool()
 {
-fprintf(stderr, "~VncTool ENTER\n");//!!!
     for (AnimationList::iterator it = animations.begin(); it != animations.end(); ++it)
         delete *it;
     animations.clear();
@@ -1186,7 +1185,6 @@ fprintf(stderr, "~VncTool ENTER\n");//!!!
     }
 
     resetConnection();
-fprintf(stderr, "~VncTool EXIT\n");//!!!
 }
 
 
@@ -1436,7 +1434,8 @@ void VncTool::updateUIState()
     if (vncDialog)
         vncDialog->checkForUpdates();
 
-    if (!vncDialog || vncDialog->getServerCloseCompleted())
+    if ( (!vncDialog && !manualHostnameEntryCompletionCallback) ||
+         (vncDialog && vncDialog->getServerCloseCompleted())       )
     {
         clearHostSelectorButtons();
         if (messageLabel)
