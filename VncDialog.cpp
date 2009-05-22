@@ -90,10 +90,15 @@ void VncDialog::PasswordDialogCompletionCallback::keyboardDialogDidComplete(Keyb
     if (vncDialog->passwordKeyboardDialog == &keyboardDialog)
         vncDialog->passwordKeyboardDialog = 0;
 
-    if (vncDialog && retrievedPassword.size() > 0)
+    if (vncDialog)
     {
-        // Must be performed last before returning:
-        passwordRetrievalCompletionThunk.postPassword(retrievedPassword.c_str());
+        if (retrievedPassword.size() > 0)
+        {
+            // Must be performed last before returning:
+            passwordRetrievalCompletionThunk.postPassword(retrievedPassword.c_str());
+        }
+        else
+            vncDialog->serverCloseCompleted = true;
     }
 
     // The following is OK to do before returning...

@@ -993,7 +993,9 @@ void VncTool::ManualHostnameEntryCompletionCallback::keyboardDialogDidComplete(K
 {
     UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
 
-    if (!cancelled)
+    if (cancelled)
+        vncTool->clearHostSelectorButtons();
+    else
     {
         const char* const hostName = keyboardDialog.getBuffer().c_str();
         vncTool->hostDescriptorForManualEntry.setDesktopHost(hostName);
