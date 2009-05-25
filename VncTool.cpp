@@ -469,7 +469,8 @@ VncToolFactory::VncToolFactory(Vrui::ToolManager& toolManager) :
     // in VncTool.  See VncTool::changeHostCallback().  One issue would be that you
     // would also need to store a flag whether or not there is a host selected at all
     // because a NULL or empty hostName is synonymous with localhost.
-    StringList hostNames = cfs.retrieveValue<StringList>("./hostNames");
+    StringList emptyStringList;
+    StringList hostNames = cfs.retrieveValue<StringList>("./hostNames", emptyStringList);
     for (StringList::const_iterator it = hostNames.begin(); it != hostNames.end(); ++it)
         hostDescriptors.push_back(HostDescriptor(cfs, 0, it->c_str()));
 
