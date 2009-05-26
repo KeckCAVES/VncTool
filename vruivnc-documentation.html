@@ -10,7 +10,7 @@ The VncTool (using the companion VncVislet) implements a VNC (Virtual Network Co
 </p>
 
 <h2>A Quick Aside: What is VNC?</h2>
-<p>VNC servers and clients communicate via the <a href="http://www.realvnc.com/docs/rfbproto.pdf">RFB protocol.</a> (RFB stands for Remote Frame Buffer, the original name of the system before it was known as VNC.)
+<p>VNC servers and clients communicate via the <a href="http://www.realvnc.com/docs/rfbproto.pdf">RFB protocol</a>. (RFB stands for Remote Frame Buffer, the original name of the system before it was known as VNC.)
 The RFB protocol provides a client-server environment for controlling a remote computer through its graphical user interface.
 Whenever a portion of the screen on the remote computer changes, the VNC server running on the remote computer transmits that portion of the screen to the VNC client (which is running on the local computer).
 In addition, the RFB protocol allows keypresses and mouse events from the client computer to be transmitted to the remote computer,
@@ -88,7 +88,7 @@ The VncTool settings must be entered into any sections for which you will be run
 </p>
 
 <h3>Make the VncTool accessible to Vrui</h3>
-</p><p>If the VncTool is not compiled directly into your Vrui installation, you can tell Vrui where to find the VncTool using an <i>toolSearchPaths</i> entry.
+</p><p>If the VncTool is not compiled directly into your Vrui installation, you can tell Vrui where to find the VncTool using a <i>toolSearchPaths</i> entry.
 This entry tells Vrui where to look for tools.  For example:
 <code><blockquote>
 toolSearchPaths ( "/usr/local/Vrui-1.0/lib/VRTools/", "/Users/blackguard/develop/vruivnc/" )
@@ -259,7 +259,7 @@ endsection<br/>
   <tr><td colspan="4"><b><code><font size="+1">rfbPort</font></code></b></td></tr>
   <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td align="left" valign="top">Data&nbsp;type:</td><td>&nbsp;</td><td>Integer</td></tr>
   <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td align="left" valign="top">Default&nbsp;value:</td><td>&nbsp;</td><td>0</td></tr>
-  <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td align="left" valign="top">Description:</td><td>&nbsp;</td><td>The RFB/VNC port.  Must be positive.
+  <tr><td>&nbsp;&nbsp;&nbsp;&nbsp;</td><td align="left" valign="top">Description:</td><td>&nbsp;</td><td>The RFB/VNC port.  Must be nonnegative.
     The correct setting will be determined by the server to which you are connecting.</td></tr>
   <tr><td colspan="4">&nbsp;</td></tr>
   <tr><td colspan="4"><b><code><font size="+1">requestedEncodings</font></code></b></td></tr>
