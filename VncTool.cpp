@@ -1225,9 +1225,7 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
             // Note: We rely on the fact that the host descriptors list in VncToolFactory does not ever change....
             // See also the note in VncToolFactory::VncToolFactory().
             const int toggleIndex = cbData->radioBox->getToggleIndex(cbData->newSelectedToggle);
-            if (toggleIndex > 0)
-                startVncDialogWithHostDescriptor(&static_cast<const VncToolFactory*>(getFactory())->getHostDescriptors().at(toggleIndex-1));
-            else
+            if (toggleIndex <= 0)
             {
                 // The zero-th (manual entry) selection
 
@@ -1241,10 +1239,14 @@ void VncTool::changeHostCallback(GLMotif::RadioBox::ValueChangedCallbackData* cb
                 }
 
                 manualHostnameEntryCompletionCallback = new ManualHostnameEntryCompletionCallback(this, popupWindow);
-                dataEntryKeyboardDialog               = new KeyboardDialog("ManualEntryHostnameInputDialog", Vrui::getWidgetManager(), "Enter hostname:");
+                dataEntryKeyboardDialog               = new KeyboardDialog("ManualEntryHostnameInputDialog", Vrui::getWidgetManager(), "Enter hostname:", hostDescriptorForManualEntry.desktopHost);
                 Vrui::popupPrimaryWidget(dataEntryKeyboardDialog, Vrui::getNavigationTransformation().transform(Vrui::getDisplayCenter()));
 
                 dataEntryKeyboardDialog->activate(*manualHostnameEntryCompletionCallback);
+            }
+            else
+            {
+                startVncDialogWithHostDescriptor(&static_cast<const VncToolFactory*>(getFactory())->getHostDescriptors().at(toggleIndex-1));
             }
         }
     }
@@ -1276,6 +1278,8 @@ void VncTool::startVncDialogWithHostDescriptor(const VncToolFactory::HostDescrip
                                    hostDescriptor->requestedEncodings,
                                    hostDescriptor->sharedDesktopFlag,
                                    (enableClickThroughToggle && enableClickThroughToggle->getToggle()) );
+
+        vncDialog->addCloseButtonCallback(this, &VncTool::vncDialogCloseButtonCallback);
     }
 }
 
@@ -1437,17 +1441,9 @@ void VncTool::updateUIState()
     if (vncDialog)
         vncDialog->checkForUpdates();
 
-    if ( (!vncDialog && !manualHostnameEntryCompletionCallback) ||
-         (vncDialog && vncDialog->getServerCloseCompleted())       )
+    if (messageLabel && vncDialog)
     {
-        clearHostSelectorButtons();
-        if (messageLabel)
-            messageLabel->setLabel("Ready");
-    }
-
-    if (messageLabel)
-    {
-        const char* const message = vncDialog ? vncDialog->getMessageString() : "";
+        const char* const message = vncDialog->getMessageString();
         messageLabel->setLabel(message ? message : "");
     }
 
@@ -1477,6 +1473,9 @@ void VncTool::clearHostSelectorButtons() const
                 toggle->setToggle(false);
             }
         }
+
+    if (messageLabel)
+        messageLabel->setLabel("Ready");
 }
 
 
@@ -1518,6 +1517,14 @@ void VncTool::display(GLContextData& contextData) const
         glEnd();
         glPopAttrib();
     }
+}
+
+
+
+void VncTool::vncDialogCloseButtonCallback(GLMotif::Button::CallbackData* cbData)
+{
+    resetConnection();
+    clearHostSelectorButtons();
 }
 
 

@@ -212,6 +212,7 @@ namespace Voltaic {
         KeyboardDialog( const char*             name,
                         GLMotif::WidgetManager* manager,
                         const char*             titleString,
+                        const char*             initialValue       = 0,
                         double                  autoRepeatDelay    = 0.5,
                         double                  autoRepeatInterval = 0.25 );
 

@@ -82,6 +82,24 @@ namespace Voltaic {
         virtual void close();
         virtual bool checkForUpdates();
 
+        template <class CallbackClassParam, class DerivedCallbackDataParam>
+            void addCloseButtonCallback(CallbackClassParam* newCallbackObject, void (CallbackClassParam::*newCallbackMethod)(DerivedCallbackDataParam*))
+        {
+            if (closeButton) closeButton->getSelectCallbacks().add(newCallbackObject, newCallbackMethod);
+        }
+
+        template <class CallbackClassParam,class DerivedCallbackDataParam>
+            void addToFront(CallbackClassParam* newCallbackObject, void (CallbackClassParam::*newCallbackMethod)(DerivedCallbackDataParam*))
+        {
+            if (closeButton) closeButton->getSelectCallbacks().addToFront(newCallbackObject, newCallbackMethod);
+        }
+
+        template <class CallbackClassParam,class DerivedCallbackDataParam>
+            void remove(CallbackClassParam* removeCallbackObject, void (CallbackClassParam::*removeCallbackMethod)(DerivedCallbackDataParam*))
+        {
+            if (closeButton) closeButton->getSelectCallbacks().remove(removeCallbackObject, removeCallbackMethod);
+        }
+
     public:
         // VncManager::MessageManager methods:
         virtual void internalErrorMessage(const char* where, const char* message);
@@ -150,7 +168,7 @@ namespace Voltaic {
 
         const char* getMessageString() const { return messageLabel ? messageLabel->getLabel() : ""; }
 
-        bool getServerCloseCompleted() const { return serverCloseCompleted; }
+        bool getServerInitFailed() const { return serverInitFailed; }
 
     protected:
         virtual void closeButtonCallback(GLMotif::Button::CallbackData* cbData);
@@ -160,7 +178,7 @@ namespace Voltaic {
         virtual void resetConnection();
 
     protected:
-        bool                              serverCloseCompleted;
+        bool                              serverInitFailed;
         bool                              initViaConnect;
         std::string                       hostname;
         unsigned                          rfbPort;

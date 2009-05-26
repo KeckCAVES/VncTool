@@ -236,6 +236,9 @@ namespace Voltaic {
         virtual void display(GLContextData& contextData) const;
 
     protected:
+        void vncDialogCloseButtonCallback(GLMotif::Button::CallbackData* cbData);
+
+    protected:
         template<class PopupWindowClass>
             void closePopupWindow(PopupWindowClass*& var);
 

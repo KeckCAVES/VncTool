@@ -92,13 +92,13 @@ void VncDialog::PasswordDialogCompletionCallback::keyboardDialogDidComplete(Keyb
 
     if (vncDialog)
     {
-        if (retrievedPassword.size() > 0)
+        if (retrievedPassword.size() <= 0)
+            vncDialog->infoServerInitCompleted(false);  // simulate failed connection
+        else
         {
             // Must be performed last before returning:
             passwordRetrievalCompletionThunk.postPassword(retrievedPassword.c_str());
         }
-        else
-            vncDialog->serverCloseCompleted = true;
     }
 
     // The following is OK to do before returning...
@@ -121,7 +121,7 @@ VncDialog::VncDialog( const char*             sName,
     GLMotif::PopupWindow(sName, sManager, ""),
     VncManager::MessageManager(),
     VncManager::PasswordRetrievalThunk(),
-    serverCloseCompleted(false),
+    serverInitFailed(false),
     initViaConnect(initViaConnect),
     hostname(hostname ? hostname : ""),
     rfbPort(rfbPort),
@@ -205,13 +205,10 @@ bool VncDialog::checkForUpdates()
 {
     bool updated = false;
 
-    if (!serverCloseCompleted)
+    if (vncWidget)
     {
-        if (vncWidget)
-        {
-            UpperLeftCornerPreserver upperLeftCornerPreserver(this);
-            updated = vncWidget->checkForUpdates();
-        }
+        UpperLeftCornerPreserver upperLeftCornerPreserver(this);
+        updated = vncWidget->checkForUpdates();
     }
 
     return updated;
@@ -275,6 +272,7 @@ void VncDialog::infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, r
 
 void VncDialog::infoServerInitCompleted(bool succeeded)
 {
+    serverInitFailed = !succeeded;
     messageLabel->setLabel(succeeded ? "Connected" : "Connection failed");
 }
 
@@ -289,7 +287,7 @@ void VncDialog::infoCloseStarted()
 
 void VncDialog::infoCloseCompleted()
 {
-    serverCloseCompleted = true;
+    // do nothing...
 }
 
 

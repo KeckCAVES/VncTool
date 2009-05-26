@@ -287,6 +287,7 @@ void KeyboardDialog::SwitchButton::selectCallback(GLMotif::Button::SelectCallbac
 KeyboardDialog::KeyboardDialog( const char*             name,
                                 GLMotif::WidgetManager* manager,
                                 const char*             titleString,
+                                const char*             initialValue,
                                 double                  autoRepeatDelay,
                                 double                  autoRepeatInterval ) :
     GLMotif::PopupWindow(name, manager, titleString),
@@ -305,7 +306,7 @@ KeyboardDialog::KeyboardDialog( const char*             name,
     altToggle(0),
     platformToggle(0),
     display(0),
-    buffer()
+    buffer(initialValue ? initialValue : "")
 {
     GLMotif::RowColumn* const keypad = new GLMotif::RowColumn("keypad", this, false);
     keypad->setPacking(GLMotif::RowColumn::PACK_GRID);
@@ -324,7 +325,7 @@ KeyboardDialog::KeyboardDialog( const char*             name,
     displaySizer->setBorderType(GLMotif::Widget::PLAIN);
     displaySizer->setPreferredSize(GLMotif::Vector(100.0*displaySizer->getStyleSheet()->size, 0, 0));
     displaySizer->manageChild();
-    display = new GLMotif::Label("display", displayBox, "", false);
+    display = new GLMotif::Label("display", displayBox, buffer.c_str(), false);
     display->setBackgroundColor(GLMotif::Color(1, 1, 1));
     display->setForegroundColor(GLMotif::Color(0, 0, 0));
     display->setHAlignment(GLFont::Left);
@@ -429,6 +430,7 @@ KeyboardDialog::KeyboardDialog( const char*             name,
 KeyboardDialog::~KeyboardDialog()
 {
     reset();
+    clear();
 }
 
 
@@ -517,8 +519,6 @@ void KeyboardDialog::reset()
     if (controlToggle)    controlToggle->setToggle(controlKeyDown);
     if (altToggle)        altToggle->setToggle(altKeyDown);
     if (platformToggle)   platformToggle->setToggle(platformKeyDown);
-
-    clear();
 }
 
 
