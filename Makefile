@@ -56,53 +56,53 @@ clean:
 o/%.o: %.c
 	@mkdir -p o/$(*D)
 	@echo Compiling $<...
-	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
+	@gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
 
 plugin-o/%.o: %.c
 	@mkdir -p plugin-o/$(*D)
 	@echo Compiling $<...
-	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
+	@gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
 
 o/%.o: librfb/%.c
 	@mkdir -p o/$(*D)
 	@echo Compiling $<...
-	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
+	@gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
 
 plugin-o/%.o: librfb/%.c
 	@mkdir -p plugin-o/$(*D)
 	@echo Compiling $<...
-	gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
+	@gcc -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
 
 # Pattern rules to compile C++ sources:
 o/%.o: %.cpp
 	@mkdir -p o/$(*D)
 	@echo Compiling $<...
-	g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
+	@g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
 
 plugin-o/%.o: %.cpp
 	@mkdir -p plugin-o/$(*D)
 	@echo Compiling $<...
-	g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
+	@g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
 
 o/%.o: librfb/%.cpp
 	@mkdir -p o/$(*D)
 	@echo Compiling $<...
-	g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
+	@g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $<
 
 plugin-o/%.o: librfb/%.cpp
 	@mkdir -p plugin-o/$(*D)
 	@echo Compiling $<...
-	g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
+	@g++ -c -o $@ $(VRUI_CFLAGS) $(CFLAGS) $(VRUI_PLUGINCFLAGS) $<
 
 # Pattern rule to link executables:
 %: o/%.o
 	@echo Linking $@...
-	g++ -o $@ $^ $(VRUI_LINKFLAGS) -lz
+	@g++ -o $@ $^ $(VRUI_LINKFLAGS) -lz
 
 # Pattern rule to link plugins:
 lib%.$(VRUI_PLUGINFILEEXT): plugin-o/%.o
 	@echo Linking $@...
-	g++ -o $@ $^ $(VRUI_LINKFLAGS) $(VRUI_PLUGINLINKFLAGS) -lz
+	@g++ -o $@ $^ $(VRUI_LINKFLAGS) $(VRUI_PLUGINLINKFLAGS) -lz
 
 
 # List all executable dependencies:

@@ -488,6 +488,13 @@ VncToolFactory::~VncToolFactory()
 
 
 
+const char* VncToolFactory::getName() const
+{
+    return "VncTool xxx";
+}
+
+
+
 Vrui::Tool* VncToolFactory::createTool(const Vrui::ToolInputAssignment& inputAssignment) const
 {
     return new VncTool(this, inputAssignment);

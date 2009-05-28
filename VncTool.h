@@ -86,6 +86,7 @@ namespace Voltaic {
         VncToolFactory(Vrui::ToolManager& toolManager);
         virtual ~VncToolFactory();
 
+        virtual const char* getName() const;
         virtual Vrui::Tool* createTool(const Vrui::ToolInputAssignment& inputAssignment) const;
         virtual void        destroyTool(Vrui::Tool* tool) const;
 
