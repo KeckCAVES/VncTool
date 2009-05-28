@@ -490,7 +490,7 @@ VncToolFactory::~VncToolFactory()
 
 const char* VncToolFactory::getName() const
 {
-    return "VncTool xxx";
+    return "VncTool";
 }
 
 
