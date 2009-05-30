@@ -26,6 +26,7 @@
 #include <GLMotif/StyleSheet.h>
 #include <GLMotif/RowColumn.h>
 #include <GLMotif/Blind.h>
+#include <Vrui/ToolManager.h>
 #include <Vrui/Vrui.h>
 #include <ctype.h>
 
@@ -44,6 +45,10 @@ VncVisletFactory::VncVisletFactory(Vrui::VisletManager& visletManager) :
     visletFactory->addChildClass(this);
     addParentClass(visletFactory);
 #endif
+
+    Vrui::ToolManager* const toolManager = Vrui::getToolManager();
+    if (toolManager)
+        toolManager->loadClass("VncTool");
 
     // Load class settings:
     Misc::ConfigurationFileSection cfs = visletManager.getVisletClassSection(getClassName());

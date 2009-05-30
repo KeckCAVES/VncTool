@@ -449,12 +449,10 @@ VncToolFactory::VncToolFactory(Vrui::ToolManager& toolManager) :
     layout.setNumDevices(1);
     layout.setNumButtons(0, 1);
 
-#if 0
     // Insert class into class hierarchy:
-    ToolFactory* toolFactory = toolManager.loadClass("Tool");
+    ToolFactory* toolFactory = toolManager.loadClass("UtilityTool");
     toolFactory->addChildClass(this);
     addParentClass(toolFactory);
-#endif
 
     // Load class settings:
     Misc::ConfigurationFileSection cfs = toolManager.getToolClassSection(getClassName());
@@ -511,10 +509,8 @@ void VncToolFactory::destroyTool(Vrui::Tool* tool) const
 
 extern "C" void resolveVncToolDependencies(Plugins::FactoryManager<Vrui::ToolFactory>& manager)
 {
-#if 0
     // Load base classes:
-    manager.loadClass("Tool");
-#endif
+    manager.loadClass("UtilityTool");
 }
 
 
