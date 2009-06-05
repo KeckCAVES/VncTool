@@ -138,7 +138,7 @@ VncDialog::VncDialog( const char*             sName,
 {
     // Create the popup window with the VncWidget and controls in it:
 
-    std::string title = "Conneciton to: ";
+    std::string title = "Connection to: ";
     title += (hostname ? hostname : "(unknown)");
     this->setTitleString(title.c_str());
     {
