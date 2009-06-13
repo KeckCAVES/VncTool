@@ -428,59 +428,61 @@ bool RFBProtocol::initViaListen(unsigned              theRfbPort,
         }
         else
         {
-            // Get the IP address for desktopHost
-            uint32_t hostAddr = 0;  // local
+            rfbPort    = theRfbPort;
+            portOffset = LISTEN_PORT_OFFSET;
 
-            if (!desktopHost || !*desktopHost)  // 0 or empty ==> local
-                isSameMachine = true;
-            else
+            memset(&desktopIPAddress, 0, sizeof(desktopIPAddress));
+
+            const int acceptSock = socket(AF_INET, SOCK_STREAM, 0);
+            if (acceptSock < 0)
             {
-                hostAddr = inet_addr(desktopHost);
-                if (hostAddr == (uint32_t)-1)
-                {
-                    const struct hostent* const hp = gethostbyname(desktopHost);
-
-                    if (hp && (hp->h_addrtype == AF_INET))
-                        hostAddr = *(uint32_t*)hp->h_addr;
-                }
-            }
-
-            if (hostAddr == (uint32_t)-1)
-            {
-                if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "hostname resolution failed");
+                if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "socket allocation failed");
                 result = false;
             }
             else
             {
-                if (!isSameMachine)
-                    isSameMachine = TestIsLocalMachine(hostAddr);
+                struct sockaddr_in acceptIPAddress;
+                memset(&acceptIPAddress, 0, sizeof(acceptIPAddress));
+                acceptIPAddress.sin_family      = AF_INET;
+                acceptIPAddress.sin_port        = htons(this->getTcpPort());
+                acceptIPAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 
-                rfbPort    = theRfbPort;
-                portOffset = LISTEN_PORT_OFFSET;
-
-                memset(&desktopIPAddress, 0, sizeof(desktopIPAddress));
-                desktopIPAddress.sin_family      = AF_INET;
-                desktopIPAddress.sin_port        = htons(this->getTcpPort());
-                desktopIPAddress.sin_addr.s_addr = hostAddr;
-
-                sock = socket(AF_INET, SOCK_STREAM, 0);
-                if (sock < 0)
+                if (bind(acceptSock, (struct sockaddr*)&acceptIPAddress, sizeof(acceptIPAddress)) < 0)
                 {
-                    if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "socket allocation failed");
-                    sock = -1;  // keep "closed" value standard
-                    result = false;
-                }
-                else if (connect(sock, (struct sockaddr*)&desktopIPAddress, sizeof(desktopIPAddress)) < 0)
-                {
-                    if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "socket connect failed");
+                    if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "socket bind failed");
                     result = false;
                 }
                 else
                 {
-                    sockConnected = true;
+                    const int backlog = 8;
+                    if (listen(acceptSock, backlog) < 0)
+                    {
+                        if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "socket accept failed");
+                        sock = -1;  // keep "closed" value standard
+                        result = false;
+                    }
+                    else
+                    {
+                        if ((sock = accept(acceptSock, 0, 0)) < 0)
+                        {
+                            if (isOpen) this->errorMessage("RFBProtocol::initViaListen", "socket accept failed");
+                            sock = -1;  // keep "closed" value standard
+                            result = false;
+                        }
+                        else
+                        {
+                            //!!! set desktopIPAddress !!!
+                            //!!! set isSameMachine correctly !!!
+                            isSameMachine = true;
 
-                    result = this->finishInit(theSharedDesktopFlag);
+                            sockConnected = true;
+
+                            result = this->finishInit(theSharedDesktopFlag);
+                        }
+                    }
                 }
+
+                ::close(acceptSock);
             }
         }
     }
