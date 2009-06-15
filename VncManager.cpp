@@ -1321,7 +1321,7 @@ void VncManager::ActionQueue::InfoDesktopSizeReceivedItem::broadcast(Comm::Multi
 bool VncManager::ActionQueue::InfoDesktopSizeReceivedItem::perform(VncManager& vncManager)
 {
     vncManager.messageManager.infoDesktopSizeReceived(newWidth, newHeight);
-    return true;
+    return vncManager.sendFramebufferUpdateRequest(0, 0, newWidth, newHeight, false);
 }
 
 
@@ -1744,7 +1744,10 @@ void VncManager::RFBProtocolImplementation::infoServerInitCompleted(bool succeed
 
 void VncManager::RFBProtocolImplementation::infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight) const
 {
-//!!!!!!!!!!!
+    // Send then DesktopSizeItem action first so that resize happens before
+    // the call to sendFramebufferUpdateRequest() in VncManager::ActionQueue::InfoDesktopSizeReceivedItem:
+    actionQueue.addAndBroadcast(new ActionQueue::DesktopSizeItem(newWidth, newHeight));
+
     actionQueue.addAndBroadcast(new ActionQueue::InfoDesktopSizeReceivedItem(newWidth, newHeight));
 }
 
