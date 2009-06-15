@@ -726,20 +726,28 @@ VncManager::TextureManager& VncManager::TextureManager::operator=(TextureManager
 
 
 
-VncManager::TextureManager::TextureManager(TextureManager& other)
+VncManager::TextureManager::TextureManager(TextureManager& other) :
+    valid(other.valid),
+    width(other.width),
+    height(other.height),
+    tileXCount(other.tileXCount),
+    tileYCount(other.tileYCount),
+    tileXCoord(other.tileXCoord),
+    tileYCoord(other.tileYCoord),
+    tileTexID(other.tileTexID),
+    pixelBuf(other.pixelBuf),
+    pixelBufSize(other.pixelBufSize)
 {
-    close();
-
-    valid        = other.valid;           other.valid        = false;
-    width        = other.width;           other.width        = 0;
-    height       = other.height;          other.height       = 0;
-    tileXCount   = other.tileXCount;      other.tileXCount   = 0;
-    tileYCount   = other.tileYCount;      other.tileYCount   = 0;
-    tileXCoord   = other.tileXCoord;      other.tileXCoord   = 0;
-    tileYCoord   = other.tileYCoord;      other.tileYCoord   = 0;
-    tileTexID    = other.tileTexID;       other.tileTexID    = 0;
-    pixelBuf     = other.pixelBuf;        other.pixelBuf     = 0;
-    pixelBufSize = other.pixelBufSize;    other.pixelBufSize = 0;
+    other.valid        = false;
+    other.width        = 0;
+    other.height       = 0;
+    other.tileXCount   = 0;
+    other.tileYCount   = 0;
+    other.tileXCoord   = 0;
+    other.tileYCoord   = 0;
+    other.tileTexID    = 0;
+    other.pixelBuf     = 0;
+    other.pixelBufSize = 0;
 }
 
 
