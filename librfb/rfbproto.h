@@ -307,12 +307,14 @@ typedef struct {
  *
  *****************************************************************************/
 
-#define rfbEncodingRaw 0
-#define rfbEncodingCopyRect 1
-#define rfbEncodingRRE 2
-#define rfbEncodingCoRRE 4
-#define rfbEncodingHextile 5
-#define rfbEncodingZRLE 16
+#define rfbEncodingRaw            0
+#define rfbEncodingCopyRect       1
+#define rfbEncodingRRE            2
+#define rfbEncodingCoRRE          4
+#define rfbEncodingHextile        5
+#define rfbEncodingZRLE          16
+#define rfbEncodingCursor      -239  /* pseudo encoding */ /* currently not supported by this implementation */
+#define rfbEncodingDesktopSize -223  /* pseudo encoding */
 
 
 
@@ -994,7 +996,7 @@ namespace rfb
         virtual void infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion) const;
         virtual void infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult) const;
         virtual void infoServerInitCompleted(bool succeeded) const;
-
+        virtual void infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight) const;
         virtual void infoCloseStarted()   const;  // warning: if not closed when destructor called, this will be called after derived instance destructor has already completed...
         virtual void infoCloseCompleted() const;  // warning: if not closed when destructor called, this will be called after derived instance destructor has already completed...
 

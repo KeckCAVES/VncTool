@@ -226,6 +226,31 @@ bool VncManager::TextureManager::init( GLsizei                 forWidth,
 
 
 
+bool VncManager::TextureManager::reinit( GLsizei                 forWidth,
+                                         GLsizei                 forHeight,
+                                         Images::RGBImage::Color initialColor )  // object is left in prior state if false is returned
+{
+    if ((forWidth == width) && (forHeight == height))
+        return true;
+    else
+    {
+        TextureManager priorState(*this);  // note: calls (*this).close()
+
+        if (init(forWidth, forHeight, initialColor))
+        {
+            priorState.close();
+            return true;
+        }
+        else
+        {
+            *this = priorState;
+            return false;
+        }
+    }
+}
+
+
+
 void VncManager::TextureManager::close()
 {
     if (pixelBuf)
@@ -683,6 +708,42 @@ bool VncManager::TextureManager::displayInRectangle( GLfloat x00, GLfloat y00, G
 
 
 
+VncManager::TextureManager& VncManager::TextureManager::operator=(TextureManager& other)
+{
+    close();
+
+    valid        = other.valid;           other.valid        = false;
+    width        = other.width;           other.width        = 0;
+    height       = other.height;          other.height       = 0;
+    tileXCount   = other.tileXCount;      other.tileXCount   = 0;
+    tileYCount   = other.tileYCount;      other.tileYCount   = 0;
+    tileXCoord   = other.tileXCoord;      other.tileXCoord   = 0;
+    tileYCoord   = other.tileYCoord;      other.tileYCoord   = 0;
+    tileTexID    = other.tileTexID;       other.tileTexID    = 0;
+    pixelBuf     = other.pixelBuf;        other.pixelBuf     = 0;
+    pixelBufSize = other.pixelBufSize;    other.pixelBufSize = 0;
+}
+
+
+
+VncManager::TextureManager::TextureManager(TextureManager& other)
+{
+    close();
+
+    valid        = other.valid;           other.valid        = false;
+    width        = other.width;           other.width        = 0;
+    height       = other.height;          other.height       = 0;
+    tileXCount   = other.tileXCount;      other.tileXCount   = 0;
+    tileYCount   = other.tileYCount;      other.tileYCount   = 0;
+    tileXCoord   = other.tileXCoord;      other.tileXCoord   = 0;
+    tileYCoord   = other.tileYCoord;      other.tileYCoord   = 0;
+    tileTexID    = other.tileTexID;       other.tileTexID    = 0;
+    pixelBuf     = other.pixelBuf;        other.pixelBuf     = 0;
+    pixelBufSize = other.pixelBufSize;    other.pixelBufSize = 0;
+}
+
+
+
 //----------------------------------------------------------------------
 // VncManager::ActionQueue::*Item methods
 
@@ -708,6 +769,7 @@ VncManager::ActionQueue::Item* VncManager::ActionQueue::Item::createFromPipeCont
     {
         case ItemType_GetPasswordItem:              return GetPasswordItem::createFromPipe(pipe);
         case ItemType_InitDisplayItem:              return InitDisplayItem::createFromPipe(pipe);
+        case ItemType_DesktopSizeItem:              return DesktopSizeItem::createFromPipe(pipe);
         case ItemType_WriteItem:                    return WriteItem::createFromPipe(pipe);
         case ItemType_CopyItem:                     return CopyItem::createFromPipe(pipe);
         case ItemType_FillItem:                     return FillItem::createFromPipe(pipe);
@@ -718,6 +780,7 @@ VncManager::ActionQueue::Item* VncManager::ActionQueue::Item::createFromPipeCont
         case ItemType_InfoProtocolVersionItem:      return InfoProtocolVersionItem::createFromPipe(pipe);
         case ItemType_InfoAuthenticationResultItem: return InfoAuthenticationResultItem::createFromPipe(pipe);
         case ItemType_InfoServerInitCompletedItem:  return InfoServerInitCompletedItem::createFromPipe(pipe);
+        case ItemType_InfoDesktopSizeReceivedItem:  return InfoDesktopSizeReceivedItem::createFromPipe(pipe);
         case ItemType_InfoCloseStartedItem:         return InfoCloseStartedItem::createFromPipe(pipe);
         case ItemType_InfoCloseCompletedItem:       return InfoCloseCompletedItem::createFromPipe(pipe);
 
@@ -813,6 +876,44 @@ bool VncManager::ActionQueue::InitDisplayItem::perform(VncManager& vncManager)
     TextureManager& remoteDisplay = vncManager.getRemoteDisplay();
     remoteDisplay.close();
     return remoteDisplay.init(si.framebufferWidth, si.framebufferHeight);
+}
+
+
+
+VncManager::ActionQueue::DesktopSizeItem* VncManager::ActionQueue::DesktopSizeItem::createFromPipe(Comm::MulticastPipe& pipe)  // static member
+{
+    GLsizei newWidth;
+    GLsizei newHeight;
+
+    pipe.read(newWidth);
+    pipe.read(newHeight);
+
+    return new DesktopSizeItem(newWidth, newHeight);
+}
+
+
+
+void VncManager::ActionQueue::DesktopSizeItem::broadcast(Comm::MulticastPipe& pipe) const
+{
+    pipe.write(ItemType_DesktopSizeItem);
+
+    pipe.write(newWidth);
+    pipe.write(newHeight);
+
+    pipe.finishMessage();
+}
+
+
+
+bool VncManager::ActionQueue::DesktopSizeItem::perform(VncManager& vncManager)
+{
+    TextureManager& remoteDisplay = vncManager.getRemoteDisplay();
+
+    const bool succeeded = remoteDisplay.reinit(newWidth, newHeight);
+    if (!succeeded)
+        vncManager.shutdown();  // cannot safely continue
+
+    return succeeded;
 }
 
 
@@ -1187,6 +1288,39 @@ void VncManager::ActionQueue::InfoServerInitCompletedItem::broadcast(Comm::Multi
 bool VncManager::ActionQueue::InfoServerInitCompletedItem::perform(VncManager& vncManager)
 {
     vncManager.messageManager.infoServerInitCompleted(succeeded);
+    return true;
+}
+
+
+
+VncManager::ActionQueue::InfoDesktopSizeReceivedItem* VncManager::ActionQueue::InfoDesktopSizeReceivedItem::createFromPipe(Comm::MulticastPipe& pipe)  // static member
+{
+    GLsizei newWidth;
+    GLsizei newHeight;
+
+    pipe.read(newWidth);
+    pipe.read(newHeight);
+
+    return new InfoDesktopSizeReceivedItem(newWidth, newHeight);
+}
+
+
+
+void VncManager::ActionQueue::InfoDesktopSizeReceivedItem::broadcast(Comm::MulticastPipe& pipe) const
+{
+    pipe.write(ItemType_InfoDesktopSizeReceivedItem);
+
+    pipe.write(newWidth);
+    pipe.write(newHeight);
+
+    pipe.finishMessage();
+}
+
+
+
+bool VncManager::ActionQueue::InfoDesktopSizeReceivedItem::perform(VncManager& vncManager)
+{
+    vncManager.messageManager.infoDesktopSizeReceived(newWidth, newHeight);
     return true;
 }
 
@@ -1604,6 +1738,14 @@ void VncManager::RFBProtocolImplementation::infoServerInitCompleted(bool succeed
         actionQueue.addAndBroadcast(new ActionQueue::InitDisplayItem(si, desktopName));
 
     actionQueue.addAndBroadcast(new ActionQueue::InfoServerInitCompletedItem(succeeded));
+}
+
+
+
+void VncManager::RFBProtocolImplementation::infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight) const
+{
+//!!!!!!!!!!!
+    actionQueue.addAndBroadcast(new ActionQueue::InfoDesktopSizeReceivedItem(newWidth, newHeight));
 }
 
 

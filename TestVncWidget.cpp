@@ -223,6 +223,13 @@ void TestVncWidget::infoServerInitCompleted(bool succeeded)
 
 
 
+void TestVncWidget::infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight)
+{
+    fprintf(stderr, "TestVncWidget info: RFB protocol: DesktopSize received: %ldx%ld\n", (long)newWidth, (long)newHeight);
+}
+
+
+
 void TestVncWidget::infoCloseStarted()
 {
     fprintf(stderr, "TestVncWidget info: RFB protocol: close started\n");

@@ -826,12 +826,13 @@ bool RFBProtocol::sendSetPixelFormat()
 // rfbEncodingCopyRect must be first....
 static const struct { const char* name; rfbCARD32 value; } SupportedEncodings[] =
 {
-    { "copyrect", rfbEncodingCopyRect },  // rfbEncodingCopyRect must be first
-    { "zrle",     rfbEncodingZRLE     },
-    { "hextile",  rfbEncodingHextile  },
-    { "corre",    rfbEncodingCoRRE    },
-    { "rre",      rfbEncodingRRE      },
-    { "raw",      rfbEncodingRaw      }
+    { "copyrect",    rfbEncodingCopyRect    },  // rfbEncodingCopyRect must be first
+    { "zrle",        rfbEncodingZRLE        },
+    { "hextile",     rfbEncodingHextile     },
+    { "corre",       rfbEncodingCoRRE       },
+    { "rre",         rfbEncodingRRE         },
+    { "raw",         rfbEncodingRaw         },
+    { "desktopsize", rfbEncodingDesktopSize }
 };
 
 #define NUM_SUPPORTED_ENCODINGS  (sizeof(SupportedEncodings)/sizeof(*SupportedEncodings))
@@ -1427,6 +1428,12 @@ bool RFBProtocol::receivedFramebufferUpdate(const rfbFramebufferUpdateMsg& msg)
                         }
                         break;
 
+                        case rfbEncodingDesktopSize:
+                        {
+                            this->infoDesktopSizeReceived(rect.r.w, rect.r.h);
+                        }
+                        break;
+
                         default:
                         {
                             if (isOpen) this->errorMessage1l("RFBProtocol::receivedFramebufferUpdate", "unknown rectangle encoding", rect.encoding);
@@ -1533,6 +1540,13 @@ void RFBProtocol::infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme,
 
 
 void RFBProtocol::infoServerInitCompleted(bool succeeded) const
+{
+    // default implementation does nothing...
+}
+
+
+
+void RFBProtocol::infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight) const
 {
     // default implementation does nothing...
 }

@@ -251,7 +251,7 @@ void VncDialog::errorMessageFromServer(const char* where, const char* message)
 
 void VncDialog::infoServerInitStarted()
 {
-    messageLabel->setLabel("Connecting...");
+    messageLabel->setLabel(initViaConnect ? "Connecting..." : "Waiting for connection...");
 }
 
 
@@ -274,6 +274,13 @@ void VncDialog::infoServerInitCompleted(bool succeeded)
 {
     serverInitFailed = !succeeded;
     messageLabel->setLabel(succeeded ? "Connected" : "Connection failed");
+}
+
+
+
+void VncDialog::infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight)
+{
+    // do nothing...
 }
 
 

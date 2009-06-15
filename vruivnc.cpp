@@ -301,6 +301,13 @@ void vruivnc::infoServerInitCompleted(bool succeeded)
 
 
 
+void vruivnc::infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight)
+{
+    fprintf(stderr, "vruivnc info: RFB protocol: DesktopSize received: %ldx%ld\n", (long)newWidth, (long)newHeight);
+}
+
+
+
 void vruivnc::infoCloseStarted()
 {
     fprintf(stderr, "vruivnc info: RFB protocol: close started\n");

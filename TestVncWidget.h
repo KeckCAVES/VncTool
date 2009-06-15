@@ -55,6 +55,7 @@ namespace Voltaic {
         virtual void infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion);
         virtual void infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult);
         virtual void infoServerInitCompleted(bool succeeded);
+        virtual void infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight);
         virtual void infoCloseStarted();
         virtual void infoCloseCompleted();
 

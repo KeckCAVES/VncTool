@@ -69,6 +69,8 @@ namespace Voltaic {
             };
 
         protected:
+            // When adding, deleting or changing these data members, be sure
+            // to update the copy constructor and assignment operator.
             bool                     valid;
             GLsizei                  width;
             GLsizei                  height;
@@ -123,6 +125,11 @@ namespace Voltaic {
                                GLsizei                 forHeight,
                                Images::RGBImage::Color initialColor = Images::RGBImage::Color(0, 0, 255) );  // isValid() iff true is returned
 
+            // reinit() will do nothing and return true if forWidth and forHeight match the current values of width and height
+            virtual bool reinit( GLsizei                 forWidth,
+                                 GLsizei                 forHeight,
+                                 Images::RGBImage::Color initialColor = Images::RGBImage::Color(0, 0, 255) );  // object is left in prior state if false is returned
+
             virtual void close();
 
             bool isValid() const { return valid; }
@@ -176,9 +183,15 @@ namespace Voltaic {
                                              GLfloat x11, GLfloat y11, GLfloat z11 ) const;
 
         private:
-            // Disable these copiers:
-            TextureManager& operator=(const TextureManager&);
-            TextureManager(const TextureManager&);
+            // These copiers are used internally by reinit() only
+            // and do not correctly share references in a way that
+            // would be useful elsewhere.  They have the same sort
+            // of behavior as std::auto_ptr smart pointers, i.e.,
+            // the receiving object takes over all references
+            // and leaves the other object in an essentially
+            // empty state.
+            TextureManager& operator=(TextureManager& other);
+            TextureManager(TextureManager& other);
         };
 
     //----------------------------------------------------------------------
@@ -201,6 +214,7 @@ namespace Voltaic {
             virtual void infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion) = 0;
             virtual void infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult) = 0;
             virtual void infoServerInitCompleted(bool succeeded) = 0;
+            virtual void infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight) = 0;
             virtual void infoCloseStarted() = 0;
             virtual void infoCloseCompleted() = 0;
         };
@@ -246,6 +260,7 @@ namespace Voltaic {
                 {
                     ItemType_GetPasswordItem,
                     ItemType_InitDisplayItem,
+                    ItemType_DesktopSizeItem,
                     ItemType_WriteItem,
                     ItemType_CopyItem,
                     ItemType_FillItem,
@@ -256,6 +271,7 @@ namespace Voltaic {
                     ItemType_InfoProtocolVersionItem,
                     ItemType_InfoAuthenticationResultItem,
                     ItemType_InfoServerInitCompletedItem,
+                    ItemType_InfoDesktopSizeReceivedItem,
                     ItemType_InfoCloseStartedItem,
                     ItemType_InfoCloseCompletedItem
                 };
@@ -309,6 +325,27 @@ namespace Voltaic {
                 }
 
                 static InitDisplayItem* createFromPipe(Comm::MulticastPipe& pipe);
+
+            public:
+                virtual void broadcast(Comm::MulticastPipe& pipe) const;
+                virtual bool perform(VncManager& vncManager);
+            };
+
+            class DesktopSizeItem : public Item
+            {
+            protected:
+                const GLsizei newWidth;
+                const GLsizei newHeight;
+
+            public:
+                DesktopSizeItem(GLsizei newWidth, GLsizei newHeight) :
+                    Item(ItemType_DesktopSizeItem),
+                    newWidth(newWidth),
+                    newHeight(newHeight)
+                {
+                }
+
+                static DesktopSizeItem* createFromPipe(Comm::MulticastPipe& pipe);
 
             public:
                 virtual void broadcast(Comm::MulticastPipe& pipe) const;
@@ -555,6 +592,27 @@ namespace Voltaic {
                 virtual bool perform(VncManager& vncManager);
             };
 
+            class InfoDesktopSizeReceivedItem : public Item
+            {
+            protected:
+                const rfbCARD16 newWidth;
+                const rfbCARD16 newHeight;
+
+            public:
+                InfoDesktopSizeReceivedItem(rfbCARD16 newWidth, rfbCARD16 newHeight) :
+                    Item(ItemType_InfoDesktopSizeReceivedItem),
+                    newWidth(newWidth),
+                    newHeight(newHeight)
+                {
+                }
+
+                static InfoDesktopSizeReceivedItem* createFromPipe(Comm::MulticastPipe& pipe);
+
+            public:
+                virtual void broadcast(Comm::MulticastPipe& pipe) const;
+                virtual bool perform(VncManager& vncManager);
+            };
+
             class InfoCloseStartedItem : public Item
             {
             public:
@@ -687,6 +745,7 @@ namespace Voltaic {
             virtual void infoProtocolVersion(int serverMajorVersion, int serverMinorVersion, int clientMajorVersion, int clientMinorVersion) const;
             virtual void infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, rfbCARD32 authResult) const;
             virtual void infoServerInitCompleted(bool succeeded) const;
+            virtual void infoDesktopSizeReceived(rfbCARD16 newWidth, rfbCARD16 newHeight) const;
 
             virtual void infoCloseStarted()   const;  // warning: if not closed when destructor called, this will be called after derived instance destructor has already completed...
             virtual void infoCloseCompleted() const;  // warning: if not closed when destructor called, this will be called after derived instance destructor has already completed...
