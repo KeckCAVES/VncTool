@@ -171,10 +171,10 @@ namespace Voltaic {
                                GLsizei                        srcWidth,
                                GLsizei                        srcHeight ) const;
 
-            virtual bool fill( GLint                   x,
-                               GLint                   y,
-                               GLsizei                 w,
-                               GLsizei                 h,
+            virtual bool fill( GLint                   destX,
+                               GLint                   destY,
+                               GLsizei                 destWidth,
+                               GLsizei                 destHeight,
                                Images::RGBImage::Color color ) const;
 
         public:
@@ -422,23 +422,23 @@ namespace Voltaic {
             class FillItem : public Item
             {
             protected:
-                const GLint                   x;
-                const GLint                   y;
-                const GLsizei                 w;
-                const GLsizei                 h;
+                const GLint                   destX;
+                const GLint                   destY;
+                const GLsizei                 destWidth;
+                const GLsizei                 destHeight;
                 const Images::RGBImage::Color color;
 
             public:
-                FillItem( GLint                   x,
-                          GLint                   y,
-                          GLsizei                 w,
-                          GLsizei                 h,
+                FillItem( GLint                   destX,
+                          GLint                   destY,
+                          GLsizei                 destWidth,
+                          GLsizei                 destHeight,
                           Images::RGBImage::Color color ) :
                     Item(ItemType_FillItem),
-                    x(x),
-                    y(y),
-                    w(w),
-                    h(h),
+                    destX(destX),
+                    destY(destY),
+                    destWidth(destWidth),
+                    destHeight(destHeight),
                     color(color)
                 {
                 }

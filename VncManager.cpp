@@ -640,13 +640,111 @@ bool VncManager::TextureManager::copy( GLint   destX,
 
 
 
-bool VncManager::TextureManager::fill( GLint                   x,
-                                       GLint                   y,
-                                       GLsizei                 w,
-                                       GLsizei                 h,
+bool VncManager::TextureManager::fill( GLint                   destX,
+                                       GLint                   destY,
+                                       GLsizei                 destWidth,
+                                       GLsizei                 destHeight,
                                        Images::RGBImage::Color color ) const
 {
-    return false;//!!! implement me !!!
+    static const GLint  texLevel  = 0;
+    static const GLenum texFormat = GL_RGB;
+    static const GLenum texType   = GL_UNSIGNED_BYTE;
+
+    if (!valid)
+        return false;
+    else
+    {
+        if ( (destWidth            <= 0)      ||
+             (destHeight           <= 0)      ||
+             ((destX + destWidth)  <= 0)      ||
+             ((destY + destHeight) <= 0)      ||
+             (destX                >= width)  ||
+             (destY                >= height)    )
+        {
+            return true;  // nothing to do...
+        }
+        else
+        {
+            // First, fill the pixelBuf with pixels of the chosen color:
+            for (Images::RGBImage::Color* p = pixelBuf; p < pixelBuf+pixelBufSize; )
+                *p++ = color;
+
+            GLsizei firstTileCol = 0;  // first tile column index that will contain fill
+
+            if (destX >= 0)
+                for ( ; firstTileCol < tileXCount; firstTileCol++)
+                    if ((tileXCoord[firstTileCol] <= destX) && (destX < tileXCoord[firstTileCol+1]))
+                        break;
+
+            GLsizei firstTileRow = 0;  // first tile row index that will contain fill
+
+            if (destY >= 0)
+                for ( ; firstTileRow < tileYCount; firstTileRow++)
+                    if ((tileYCoord[firstTileRow] <= destY) && (destY < tileYCoord[firstTileRow+1]))
+                        break;
+
+            GLsizei tileCol         = firstTileCol;
+            GLint   xOffset         = (destX < 0) ? 0 : (destX - tileXCoord[firstTileCol]);
+            GLsizei colsTransferred = (destX < 0) ? -destX : 0;  // will skip -destX cols if destX < 0
+
+            while ((tileCol < tileXCount) && (colsTransferred < destWidth))
+            {
+                const GLsizei tileWidth = getTileWidth(tileCol);
+
+                GLsizei w = destWidth - colsTransferred;
+                if (w > (tileWidth - xOffset))
+                    w = (tileWidth - xOffset);
+
+                GLsizei tileRow         = firstTileRow;
+                GLint   yOffset         = (destY < 0) ? 0 : (destY - tileYCoord[firstTileRow]);
+                GLsizei rowsTransferred = (destY < 0) ? -destY : 0;  // will skip -destY rows if destY < 0
+
+                while ((tileRow < tileYCount) && (rowsTransferred < destHeight))
+                {
+                    const GLsizei tileHeight = getTileHeight(tileRow);
+
+                    GLsizei h = destHeight - rowsTransferred;
+                    if (h > (tileHeight - yOffset))
+                        h = (tileHeight - yOffset);
+
+                    glBindTexture(GL_TEXTURE_2D, tileTexID[tileCol][tileRow]);
+                    if (glGetError() != GL_NO_ERROR)
+                        return false;
+
+                    if (!setTexParameters())
+                        return false;
+
+                    bool xfError = false;
+                    glTexSubImage2D(GL_TEXTURE_2D, texLevel, xOffset, yOffset, w, h, texFormat, texType, pixelBuf);
+                    if (glGetError() != GL_NO_ERROR)
+                        xfError = true;
+
+                    glBindTexture(GL_TEXTURE_2D, 0);  // protect texture
+
+                    if (xfError)
+                        return false;
+
+                    // Adjust h to be the effective value for this tile:
+                    if (tileRow < (tileYCount-1))
+                        h -= tileYOverlap;
+
+                    tileRow++;
+                    yOffset = 0;
+                    rowsTransferred += h;
+                }
+
+                // Adjust w to be the effective value for this tile:
+                if (tileCol < (tileXCount-1))
+                    w -= tileXOverlap;
+
+                tileCol++;
+                xOffset = 0;
+                colsTransferred += w;
+            }
+
+            return true;
+        }
+    }
 }
 
 
@@ -1033,19 +1131,19 @@ bool VncManager::ActionQueue::CopyItem::perform(VncManager& vncManager)
 
 VncManager::ActionQueue::FillItem* VncManager::ActionQueue::FillItem::createFromPipe(Comm::MulticastPipe& pipe)  // static member
 {
-    GLint                   x;
-    GLint                   y;
-    GLsizei                 w;
-    GLsizei                 h;
+    GLint                   destX;
+    GLint                   destY;
+    GLsizei                 destWidth;
+    GLsizei                 destHeight;
     Images::RGBImage::Color color;
 
-    pipe.read(x);
-    pipe.read(y);
-    pipe.read(w);
-    pipe.read(h);
+    pipe.read(destX);
+    pipe.read(destY);
+    pipe.read(destWidth);
+    pipe.read(destHeight);
     pipe.readRaw(&color, sizeof(color));
 
-    return new FillItem(x, y, w, h, color);
+    return new FillItem(destX, destY, destWidth, destHeight, color);
 }
 
 
@@ -1054,10 +1152,10 @@ void VncManager::ActionQueue::FillItem::broadcast(Comm::MulticastPipe& pipe) con
 {
     pipe.write(ItemType_FillItem);
 
-    pipe.write(x);
-    pipe.write(y);
-    pipe.write(w);
-    pipe.write(h);
+    pipe.write(destX);
+    pipe.write(destY);
+    pipe.write(destWidth);
+    pipe.write(destHeight);
     pipe.writeRaw(&color, sizeof(color));
 
     pipe.finishMessage();
@@ -1068,7 +1166,7 @@ void VncManager::ActionQueue::FillItem::broadcast(Comm::MulticastPipe& pipe) con
 bool VncManager::ActionQueue::FillItem::perform(VncManager& vncManager)
 {
     TextureManager& remoteDisplay = vncManager.getRemoteDisplay();
-    return remoteDisplay.fill(x, y, w, h, color);
+    return remoteDisplay.fill(destX, destY, destWidth, destHeight, color);
 }
 
 
