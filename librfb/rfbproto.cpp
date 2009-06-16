@@ -1247,9 +1247,11 @@ bool RFBProtocol::receivedFramebufferUpdate(const rfbFramebufferUpdateMsg& msg)
 
             rect.encoding = Swap32IfLE(rect.encoding);
 
-            if ( (rect.r.x + rect.r.w > framebufferWidth) ||
-                 (rect.r.y + rect.r.h > framebufferHeight)   )
+            if ( ( (rect.r.x + rect.r.w > framebufferWidth) ||
+                   (rect.r.y + rect.r.h > framebufferHeight)   ) &&
+                 (rect.encoding != rfbEncodingDesktopSize) )
             {
+fprintf(stderr, "!!! framebufferWidth = %d, framebufferHeight = %d\n", framebufferWidth, framebufferHeight);//!!!
                 if (isOpen) this->errorMessageRect("RFBProtocol::receivedFramebufferUpdate", "rectangle too large", rect.r.x, rect.r.y, rect.r.w, rect.r.h);
                 return false;
             }
