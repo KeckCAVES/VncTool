@@ -1072,6 +1072,8 @@ namespace rfb
         int              sock;                  // -1 if !isOpen
         bool             sockConnected;         // true iff sock is in connected or accepted state
         rfbServerInitMsg si;
+        rfbCARD16        framebufferWidth;      // set from si.framebufferWidth  initially, changed by DesktopSize pseudo-rectangles
+        rfbCARD16        framebufferHeight;     // set from si.framebufferHeight initially, changed by DesktopSize pseudo-rectangles
         rfbCARD8         currentEncoding;
         const char*      serverCutText;         // allocated via malloc()
         bool             newServerCutText;

@@ -768,6 +768,9 @@ bool RFBProtocol::finishInit(bool theSharedDesktopFlag)
                                 si.format.blueMax    = Swap16IfLE(si.format.blueMax);
                                 si.nameLength        = Swap32IfLE(si.nameLength);
 
+                                framebufferWidth  = si.framebufferWidth;
+                                framebufferHeight = si.framebufferHeight;
+
                                 char* const dn = (char*)malloc(si.nameLength + 1);
                                 if (!dn)
                                 {
@@ -1244,8 +1247,8 @@ bool RFBProtocol::receivedFramebufferUpdate(const rfbFramebufferUpdateMsg& msg)
 
             rect.encoding = Swap32IfLE(rect.encoding);
 
-            if ( (rect.r.x + rect.r.w > si.framebufferWidth) ||
-                 (rect.r.y + rect.r.h > si.framebufferHeight)   )
+            if ( (rect.r.x + rect.r.w > framebufferWidth) ||
+                 (rect.r.y + rect.r.h > framebufferHeight)   )
             {
                 if (isOpen) this->errorMessageRect("RFBProtocol::receivedFramebufferUpdate", "rectangle too large", rect.r.x, rect.r.y, rect.r.w, rect.r.h);
                 return false;
@@ -1430,7 +1433,9 @@ bool RFBProtocol::receivedFramebufferUpdate(const rfbFramebufferUpdateMsg& msg)
 
                         case rfbEncodingDesktopSize:
                         {
-                            this->infoDesktopSizeReceived(rect.r.w, rect.r.h);
+                            framebufferWidth  = rect.r.w;
+                            framebufferHeight = rect.r.h;
+                            this->infoDesktopSizeReceived(framebufferWidth, framebufferHeight);
                         }
                         break;
 
@@ -1616,7 +1621,7 @@ bool RFBProtocol::requestNewUpdate()
     }
     else
     {
-        if (!this->sendFramebufferUpdateRequest(0, 0, si.framebufferWidth, si.framebufferHeight, true))
+        if (!this->sendFramebufferUpdateRequest(0, 0, framebufferWidth, framebufferHeight, true))
             return false;
     }
 

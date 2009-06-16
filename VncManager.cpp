@@ -1672,7 +1672,7 @@ void VncManager::RFBProtocolImplementation::copyRectData(void* data, int x, int 
                     return;
             }
 
-            actionQueue.addAndBroadcast(new ActionQueue::WriteItem(x, si.framebufferHeight-1-y-h, w, h, srcData));  // srcData will be deleted by ~WriteItem()
+            actionQueue.addAndBroadcast(new ActionQueue::WriteItem(x, framebufferHeight-1-y-h, w, h, srcData));  // srcData will be deleted by ~WriteItem()
         }
     }
 }
