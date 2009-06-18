@@ -235,6 +235,7 @@ void VncDialog::errorMessage(const char* where, const char* message)
     // below to prevent exploitation.
 
     messageLabel->setLabel("Connection error");
+fprintf(stderr, "!!! VncDialog::errorMessage: %s: %s\n", where, message);//!!!
 }
 
 
