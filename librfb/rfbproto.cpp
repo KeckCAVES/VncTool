@@ -851,7 +851,7 @@ size_t RFBProtocol::scanEncodingsString(rfbCARD32* pDest = 0) const
     {
         do
         {
-            char* nextEncStr = strchr(encStr, ' ');
+            const char* nextEncStr = strchr(encStr, ' ');
 
             const int encStrLen = nextEncStr ? (int)(nextEncStr++ - encStr) : strlen(encStr);
             if (encStrLen > 0)
