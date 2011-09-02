@@ -1318,7 +1318,7 @@ void VncTool::changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData)
 
 
 
-void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice::ButtonCallbackData* cbData)
+void VncTool::buttonCallback(int buttonIndex, Vrui::InputDevice::ButtonCallbackData* cbData)
 {
     if (cbData->newButtonState)  // button has just been pressed
     {

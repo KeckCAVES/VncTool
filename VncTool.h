@@ -227,7 +227,7 @@ namespace Voltaic {
         virtual void startVncDialogWithHostDescriptor(const VncToolFactory::HostDescriptor* newHostDescriptor);
         virtual void enableClickThroughToggleCallback(GLMotif::Button::CallbackData* cbData);
         virtual void changeBeamedDataTagCallback(GLMotif::Button::CallbackData* cbData);
-        virtual void buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice::ButtonCallbackData* cbData);
+        virtual void buttonCallback(int buttonIndex, Vrui::InputDevice::ButtonCallbackData* cbData);
         virtual GLMotif::Ray calcSelectionRay() const;  // calculates the selection ray based on current device position/orientation
         virtual void updateUIState();
         virtual void clearHostSelectorButtons() const;
