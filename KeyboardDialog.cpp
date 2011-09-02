@@ -25,6 +25,7 @@
 #include <GLMotif/Blind.h>
 #include <GLMotif/WidgetAlgorithms.h>
 #include <GLMotif/StyleSheet.h>
+#include <GLMotif/Popup.h>
 
 
 
@@ -200,7 +201,7 @@ void KeyboardDialog::UpdatingValueKeyButton::updateFromModifierMask(unsigned mod
     s[0] = ch ? ch : ' ';
     s[1] = '\0';
 
-    this->setLabel(s);
+    this->setString(s);
 }
 
 
@@ -466,12 +467,12 @@ void KeyboardDialog::setAutoRepeatInterval(double value)
 void KeyboardDialog::updateDisplay()
 {
     if (!obscureEntry)
-        display->setLabel(buffer.c_str());
+        display->setString(buffer.c_str());
     else
     {
         std::string obscured;
         obscured.assign(buffer.size(), '*');
-        display->setLabel(obscured.c_str());
+        display->setString(obscured.c_str());
     }
 }
 

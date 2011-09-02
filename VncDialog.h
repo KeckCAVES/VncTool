@@ -167,7 +167,7 @@ namespace Voltaic {
         bool getEnableClickThrough() const     { return !vncWidget ? false : vncWidget->getEnableClickThrough(); }
         void setEnableClickThrough(bool value) { if (vncWidget) vncWidget->setEnableClickThrough(value); }
 
-        const char* getMessageString() const { return messageLabel ? messageLabel->getLabel() : ""; }
+        const char* getMessageString() const { return messageLabel ? messageLabel->getString() : ""; }
 
         bool getServerInitFailed() const { return serverInitFailed; }
 

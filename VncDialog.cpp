@@ -234,7 +234,7 @@ void VncDialog::errorMessage(const char* where, const char* message)
     // If any are possible, reimplement errorMessageFromServer()
     // below to prevent exploitation.
 
-    messageLabel->setLabel("Connection error");
+    messageLabel->setString("Connection error");
 fprintf(stderr, "!!! VncDialog::errorMessage: %s: %s\n", where, message);//!!!
 }
 
@@ -252,7 +252,7 @@ void VncDialog::errorMessageFromServer(const char* where, const char* message)
 
 void VncDialog::infoServerInitStarted()
 {
-    messageLabel->setLabel(initViaConnect ? "Connecting..." : "Waiting for connection...");
+    messageLabel->setString(initViaConnect ? "Connecting..." : "Waiting for connection...");
 }
 
 
@@ -274,7 +274,7 @@ void VncDialog::infoAuthenticationResult(bool succeeded, rfbCARD32 authScheme, r
 void VncDialog::infoServerInitCompleted(bool succeeded)
 {
     serverInitFailed = !succeeded;
-    messageLabel->setLabel(succeeded ? "Connected" : "Connection failed");
+    messageLabel->setString(succeeded ? "Connected" : "Connection failed");
 }
 
 

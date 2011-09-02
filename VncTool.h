@@ -35,8 +35,8 @@
 #include <GLMotif/TextField.h>
 #include <GLMotif/ToggleButton.h>
 #include <Vrui/Geometry.h>
-#include <Vrui/Tools/Tool.h>
-#include <Vrui/Tools/UtilityTool.h>
+#include <Vrui/Tool.h>
+#include <Vrui/UtilityTool.h>
 
 #include "VncDialog.h"
 #include "KeyboardDialog.h"

@@ -22,6 +22,7 @@
 
 #include <Misc/StandardValueCoders.h>
 #include <Misc/CompoundValueCoders.h>
+#include <Misc/ConfigurationFile.h>
 #include <Geometry/Point.h>
 #include <Geometry/Vector.h>
 #include <GL/gl.h>
@@ -37,6 +38,7 @@
 #include <GLMotif/TextField.h>
 #include <GLMotif/TitleBar.h>
 #include <GLMotif/StyleSheet.h>
+#include <GLMotif/Popup.h>
 #include <Vrui/ToolManager.h>
 #include <Vrui/Vrui.h>
 
@@ -152,7 +154,7 @@ void FindTitleFunctor::operator()(GLMotif::Widget* widget) const
     {
         GLMotif::TitleBar* const titleBar = dynamic_cast<GLMotif::TitleBar*>(widget);
         if (titleBar)
-            titleDest = titleBar->getLabel();
+            titleDest = titleBar->getString();
     }
 }
 
@@ -276,7 +278,7 @@ void WidgetDataRetrievalFunctor::operator()(const GLMotif::Widget* widget)
                 result += interDatumString;
         }
 
-        result += textField->getLabel();
+        result += textField->getString();
 
         anyDataSeen = true;
     }
@@ -446,8 +448,7 @@ VncToolFactory::VncToolFactory(Vrui::ToolManager& toolManager) :
     hostDescriptors()
 {
     // Initialize tool layout:
-    layout.setNumDevices(1);
-    layout.setNumButtons(0, 1);
+    layout.setNumButtons(1);
 
     // Insert class into class hierarchy:
     ToolFactory* toolFactory = toolManager.loadClass("UtilityTool");
@@ -983,7 +984,7 @@ void VncTool::BeamedDataTagInputCompletionCallback::keyboardDialogDidComplete(Ke
     UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
 
     if (!cancelled)
-        fieldToUpdate.setLabel(keyboardDialog.getBuffer().c_str());
+        fieldToUpdate.setString(keyboardDialog.getBuffer().c_str());
 
     keyboardDialog.getManager()->popdownWidget(&keyboardDialog);
     keyboardDialog.getManager()->deleteWidget(&keyboardDialog);
@@ -1007,7 +1008,7 @@ void VncTool::ManualHostnameEntryCompletionCallback::keyboardDialogDidComplete(K
         if (vncTool->hostSelector && vncTool->hostSelector->getFirstChild())
         {
             GLMotif::ToggleButton* const toggle = dynamic_cast<GLMotif::ToggleButton*>(vncTool->hostSelector->getFirstChild());
-            toggle->setLabel(hostName);
+            toggle->setString(hostName);
         }
 
     }
@@ -1269,7 +1270,7 @@ void VncTool::startVncDialogWithHostDescriptor(const VncToolFactory::HostDescrip
         if (autoBeamToggle)            autoBeamToggle->setToggle(hostDescriptor->initialAutoBeam);
         if (enableClickThroughToggle)  enableClickThroughToggle->setToggle(hostDescriptor->initialEnableClickThrough);
         if (timestampBeamedDataToggle) timestampBeamedDataToggle->setToggle(hostDescriptor->initialTimestampBeamedData);
-        if (beamedDataTagField)        beamedDataTagField->setLabel(hostDescriptor->initialBeamedDataTag.c_str());
+        if (beamedDataTagField)        beamedDataTagField->setString(hostDescriptor->initialBeamedDataTag.c_str());
 
         // Start up a new VncDialog instance:
         vncDialog = new VncDialog( "VncDialog",
@@ -1349,7 +1350,7 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
 
                         if (targetRoot != vncDialogRoot)  // don't beam from the vncDialog's container to the vncDialog
                         {
-                            const char* const beamedDataTagStringFromField = beamedDataTagField ? beamedDataTagField->getLabel() : 0;
+                            const char* const beamedDataTagStringFromField = beamedDataTagField ? beamedDataTagField->getString() : 0;
                             const char* const beamedDataTagString =
                                 (beamedDataTagStringFromField && (strlen(beamedDataTagStringFromField) > 0))
                                     ? beamedDataTagStringFromField
@@ -1382,15 +1383,16 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
                                 {
                                     UpperLeftCornerPreserver upperLeftCornerPreserver(popupWindow);
 
-                                    // Note: lastSelectedDialogDisplay->setLabel() (below) must be called after initiating
+                                    // Note: lastSelectedDialogDisplay->setString() (below) must be called after initiating
                                     // the animation because this call triggers a resize which screws up the transforms,
                                     // presumably until the next refresh (?).
+                                    // Note: don't know if this is still true w/ Vrui 2.1+ 
 
                                     std::string lastSelectedDialogTitle = "Last selected dialog: ";
                                     lastSelectedDialogTitle += targetTitle;
 
                                     if (lastSelectedDialogDisplay)
-                                        lastSelectedDialogDisplay->setLabel(lastSelectedDialogTitle.c_str());
+                                        lastSelectedDialogDisplay->setString(lastSelectedDialogTitle.c_str());
                                 }
                             }
                         }
@@ -1428,7 +1430,7 @@ void VncTool::buttonCallback(int deviceIndex, int buttonIndex, Vrui::InputDevice
 GLMotif::Ray VncTool::calcSelectionRay() const
 {
     // Get pointer to input device:
-    Vrui::InputDevice* device = input.getDevice(0);
+    Vrui::InputDevice* device = getInputAssignment().getSlotDevice(0);
 
     // Calculate ray equation:
     Vrui::Point  start     = device->getPosition();
@@ -1447,7 +1449,7 @@ void VncTool::updateUIState()
     if (messageLabel && vncDialog)
     {
         const char* const message = vncDialog->getMessageString();
-        messageLabel->setLabel(message ? message : "");
+        messageLabel->setString(message ? message : "");
     }
 
     for (AnimationList::iterator it = animations.begin(); it != animations.end(); )
@@ -1471,14 +1473,14 @@ void VncTool::clearHostSelectorButtons() const
             if (toggle)
             {
                 if (child == hostSelector->getFirstChild())
-                    toggle->setLabel("(Manual Entry)");
+                    toggle->setString("(Manual Entry)");
 
                 toggle->setToggle(false);
             }
         }
 
     if (messageLabel)
-        messageLabel->setLabel("Ready");
+        messageLabel->setString("Ready");
 }
 
 
